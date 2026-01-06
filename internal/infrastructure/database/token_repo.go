@@ -95,3 +95,57 @@ func (r *TokenRepo) UpdateStats(ctx context.Context, address string, transferCou
 
 	return nil
 }
+
+// validSortColumns defines allowed sort columns to prevent SQL injection
+var validSortColumns = map[string]bool{
+	"address":                 true,
+	"name":                    true,
+	"symbol":                  true,
+	"decimals":                true,
+	"total_indexed_transfers": true,
+	"first_seen_block":        true,
+	"last_seen_block":         true,
+	"created_at":              true,
+	"updated_at":              true,
+}
+
+// GetAllPaginated retrieves tokens with pagination and sorting
+func (r *TokenRepo) GetAllPaginated(ctx context.Context, limit, offset int, sortBy, sortOrder string) ([]*entities.Token, int64, error) {
+	// Validate sort column
+	if !validSortColumns[sortBy] {
+		sortBy = "total_indexed_transfers"
+	}
+
+	// Validate sort order
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
+	}
+
+	// Get total count
+	var total int64
+	countQuery := `SELECT COUNT(*) FROM tokens`
+	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
+		return nil, 0, fmt.Errorf("failed to count tokens: %w", err)
+	}
+
+	// Get paginated tokens
+	query := fmt.Sprintf(`SELECT * FROM tokens ORDER BY %s %s LIMIT $1 OFFSET $2`, sortBy, sortOrder)
+	var tokens []*entities.Token
+	if err := r.db.SelectContext(ctx, &tokens, query, limit, offset); err != nil {
+		return nil, 0, fmt.Errorf("failed to get tokens: %w", err)
+	}
+
+	return tokens, total, nil
+}
+
+// Count returns the total number of tokens
+func (r *TokenRepo) Count(ctx context.Context) (int64, error) {
+	var count int64
+	query := `SELECT COUNT(*) FROM tokens`
+
+	if err := r.db.GetContext(ctx, &count, query); err != nil {
+		return 0, fmt.Errorf("failed to count tokens: %w", err)
+	}
+
+	return count, nil
+}

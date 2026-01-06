@@ -14,6 +14,12 @@ type TokenRepository interface {
 	// GetAll retrieves all tokens
 	GetAll(ctx context.Context) ([]entities.Token, error)
 
+	// GetAllPaginated retrieves tokens with pagination and sorting
+	GetAllPaginated(ctx context.Context, limit, offset int, sortBy, sortOrder string) ([]*entities.Token, int64, error)
+
+	// Count returns the total number of tokens
+	Count(ctx context.Context) (int64, error)
+
 	// Upsert creates or updates a token
 	Upsert(ctx context.Context, token *entities.Token) error
 

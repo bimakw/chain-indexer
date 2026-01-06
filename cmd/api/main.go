@@ -61,9 +61,11 @@ func main() {
 
 	// Create services
 	transferService := services.NewTransferService(transferRepo, tokenRepo, redisCache, logger)
+	tokenService := services.NewTokenService(tokenRepo, redisCache, logger)
 
 	// Create handlers
 	transferHandler := handlers.NewTransferHandler(transferService, logger)
+	tokenHandler := handlers.NewTokenHandler(tokenService, logger)
 
 	var cacheChecker handlers.HealthChecker
 	if redisCache != nil {
@@ -91,6 +93,7 @@ func main() {
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
 		transferHandler.RegisterRoutes(r)
+		tokenHandler.RegisterRoutes(r)
 	})
 
 	// Start server
