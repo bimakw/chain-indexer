@@ -62,10 +62,14 @@ func main() {
 	// Create fetcher
 	fetcher := ethereum.NewFetcher(ethClient, cfg.Indexer, logger)
 
+	// Create metadata fetcher
+	metadataFetcher := ethereum.NewMetadataFetcher(ethClient, logger)
+
 	// Create indexer service
 	indexerService := services.NewIndexerService(
 		fetcher,
 		ethClient,
+		metadataFetcher,
 		tokenRepo,
 		transferRepo,
 		stateRepo,

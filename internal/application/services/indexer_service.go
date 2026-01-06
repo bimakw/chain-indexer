@@ -18,16 +18,17 @@ import (
 
 // IndexerService orchestrates the indexing process
 type IndexerService struct {
-	fetcher      *ethereum.Fetcher
-	ethClient    *ethereum.Client
-	tokenRepo    repositories.TokenRepository
-	transferRepo repositories.TransferRepository
-	stateRepo    repositories.IndexerStateRepository
-	config       config.IndexerConfig
-	logger       *zap.Logger
-	metrics      *IndexerMetrics
-	stopCh       chan struct{}
-	wg           sync.WaitGroup
+	fetcher         *ethereum.Fetcher
+	ethClient       *ethereum.Client
+	metadataFetcher *ethereum.MetadataFetcher
+	tokenRepo       repositories.TokenRepository
+	transferRepo    repositories.TransferRepository
+	stateRepo       repositories.IndexerStateRepository
+	config          config.IndexerConfig
+	logger          *zap.Logger
+	metrics         *IndexerMetrics
+	stopCh          chan struct{}
+	wg              sync.WaitGroup
 }
 
 // IndexerMetrics tracks indexer performance
@@ -45,6 +46,7 @@ type IndexerMetrics struct {
 func NewIndexerService(
 	fetcher *ethereum.Fetcher,
 	ethClient *ethereum.Client,
+	metadataFetcher *ethereum.MetadataFetcher,
 	tokenRepo repositories.TokenRepository,
 	transferRepo repositories.TransferRepository,
 	stateRepo repositories.IndexerStateRepository,
@@ -52,15 +54,16 @@ func NewIndexerService(
 	logger *zap.Logger,
 ) *IndexerService {
 	return &IndexerService{
-		fetcher:      fetcher,
-		ethClient:    ethClient,
-		tokenRepo:    tokenRepo,
-		transferRepo: transferRepo,
-		stateRepo:    stateRepo,
-		config:       cfg,
-		logger:       logger,
-		metrics:      &IndexerMetrics{},
-		stopCh:       make(chan struct{}),
+		fetcher:         fetcher,
+		ethClient:       ethClient,
+		metadataFetcher: metadataFetcher,
+		tokenRepo:       tokenRepo,
+		transferRepo:    transferRepo,
+		stateRepo:       stateRepo,
+		config:          cfg,
+		logger:          logger,
+		metrics:         &IndexerMetrics{},
+		stopCh:          make(chan struct{}),
 	}
 }
 
@@ -107,12 +110,43 @@ func (s *IndexerService) initializeTokens(ctx context.Context) error {
 		}
 
 		if existing == nil {
-			// Create token entry (metadata can be fetched later)
+			// Fetch token metadata from RPC
+			var name, symbol string
+			var decimals uint8
+
+			if s.metadataFetcher != nil {
+				metadata, fetchErr := s.metadataFetcher.FetchMetadata(ctx, addr)
+				if fetchErr != nil {
+					s.logger.Warn("Failed to fetch token metadata, using defaults",
+						zap.String("address", addr),
+						zap.Error(fetchErr),
+					)
+					name = "Unknown"
+					symbol = "UNK"
+					decimals = 18
+				} else {
+					name = metadata.Name
+					symbol = metadata.Symbol
+					decimals = metadata.Decimals
+					s.logger.Info("Fetched token metadata",
+						zap.String("address", addr),
+						zap.String("name", name),
+						zap.String("symbol", symbol),
+						zap.Uint8("decimals", decimals),
+					)
+				}
+			} else {
+				// No metadata fetcher available, use defaults
+				name = "Unknown"
+				symbol = "UNK"
+				decimals = 18
+			}
+
 			token := &entities.Token{
 				Address:  addr,
-				Name:     "Unknown",
-				Symbol:   "UNK",
-				Decimals: 18,
+				Name:     name,
+				Symbol:   symbol,
+				Decimals: int(decimals),
 			}
 
 			if err := s.tokenRepo.Upsert(ctx, token); err != nil {
