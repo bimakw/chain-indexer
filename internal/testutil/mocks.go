@@ -167,10 +167,12 @@ type MockTokenRepository struct {
 	tokens map[string]*entities.Token
 
 	// Function hooks
-	GetByAddressFunc func(ctx context.Context, address string) (*entities.Token, error)
-	GetAllFunc       func(ctx context.Context) ([]entities.Token, error)
-	UpsertFunc       func(ctx context.Context, token *entities.Token) error
-	UpdateStatsFunc  func(ctx context.Context, address string, transferCount int64, lastBlock int64) error
+	GetByAddressFunc    func(ctx context.Context, address string) (*entities.Token, error)
+	GetAllFunc          func(ctx context.Context) ([]entities.Token, error)
+	GetAllPaginatedFunc func(ctx context.Context, limit, offset int, sortBy, sortOrder string) ([]*entities.Token, int64, error)
+	CountFunc           func(ctx context.Context) (int64, error)
+	UpsertFunc          func(ctx context.Context, token *entities.Token) error
+	UpdateStatsFunc     func(ctx context.Context, address string, transferCount int64, lastBlock int64) error
 
 	Calls []MockCall
 }
@@ -217,6 +219,53 @@ func (m *MockTokenRepository) GetAll(ctx context.Context) ([]entities.Token, err
 		result = append(result, *token)
 	}
 	return result, nil
+}
+
+func (m *MockTokenRepository) GetAllPaginated(ctx context.Context, limit, offset int, sortBy, sortOrder string) ([]*entities.Token, int64, error) {
+	m.mu.Lock()
+	m.Calls = append(m.Calls, MockCall{Method: "GetAllPaginated", Args: []interface{}{limit, offset, sortBy, sortOrder}})
+	m.mu.Unlock()
+
+	if m.GetAllPaginatedFunc != nil {
+		return m.GetAllPaginatedFunc(ctx, limit, offset, sortBy, sortOrder)
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	result := make([]*entities.Token, 0, len(m.tokens))
+	for _, token := range m.tokens {
+		result = append(result, token)
+	}
+
+	total := int64(len(result))
+
+	// Apply pagination
+	start := offset
+	if start > len(result) {
+		return []*entities.Token{}, total, nil
+	}
+	end := start + limit
+	if end > len(result) {
+		end = len(result)
+	}
+
+	return result[start:end], total, nil
+}
+
+func (m *MockTokenRepository) Count(ctx context.Context) (int64, error) {
+	m.mu.Lock()
+	m.Calls = append(m.Calls, MockCall{Method: "Count", Args: nil})
+	m.mu.Unlock()
+
+	if m.CountFunc != nil {
+		return m.CountFunc(ctx)
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return int64(len(m.tokens)), nil
 }
 
 func (m *MockTokenRepository) Upsert(ctx context.Context, token *entities.Token) error {
