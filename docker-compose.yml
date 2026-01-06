@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: chain-indexer-db
+    environment:
+      POSTGRES_USER: indexer
+      POSTGRES_PASSWORD: indexer
+      POSTGRES_DB: chain_indexer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/000001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U indexer -d chain_indexer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: chain-indexer-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: chain-indexer-anvil
+    ports:
+      - "8545:8545"
+    entrypoint: ["anvil"]
+    command:
+      - "--host"
+      - "0.0.0.0"
+      - "--fork-url"
+      - "https://eth.llamarpc.com"
+      - "--fork-block-number"
+      - "19000000"
+      - "--no-mining"
+      - "--order"
+      - "fifo"
+    healthcheck:
+      test: ["CMD", "cast", "block-number", "--rpc-url", "http://localhost:8545"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: chain-indexer-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deployments/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: chain-indexer-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

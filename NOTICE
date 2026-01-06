@@ -1,0 +1,17 @@
+Chain Indexer
+Copyright (c) 2024 bimakw
+
+This product includes software developed by bimakw.
+
+Third-party dependencies and their licenses:
+
+- go-ethereum (github.com/ethereum/go-ethereum) - LGPL-3.0
+- chi (github.com/go-chi/chi) - MIT
+- sqlx (github.com/jmoiron/sqlx) - MIT
+- zap (go.uber.org/zap) - MIT
+- go-redis (github.com/redis/go-redis) - BSD-2-Clause
+- prometheus client_golang (github.com/prometheus/client_golang) - Apache-2.0
+- envconfig (github.com/kelseyhightower/envconfig) - MIT
+- pq (github.com/lib/pq) - MIT
+
+For complete license texts, please refer to the respective project repositories.

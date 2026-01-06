@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  indexer:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: indexer
+    container_name: chain-indexer-indexer
+    environment:
+      - ETH_RPC_URL=http://anvil:8545
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+      - LOG_LEVEL=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - chain-indexer
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: api
+    container_name: chain-indexer-api
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+      - LOG_LEVEL=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - chain-indexer
+
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: chain-indexer-db
+    environment:
+      POSTGRES_USER: indexer
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-indexer}
+      POSTGRES_DB: chain_indexer
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../migrations/000001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U indexer -d chain_indexer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - chain-indexer
+
+  redis:
+    image: redis:7-alpine
+    container_name: chain-indexer-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - chain-indexer
+
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: chain-indexer-anvil
+    entrypoint: ["anvil"]
+    command:
+      - "--host"
+      - "0.0.0.0"
+      - "--fork-url"
+      - "${ETH_RPC_URL:-https://eth.llamarpc.com}"
+      - "--fork-block-number"
+      - "19000000"
+    healthcheck:
+      test: ["CMD", "cast", "block-number", "--rpc-url", "http://localhost:8545"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - chain-indexer
+
+networks:
+  chain-indexer:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
