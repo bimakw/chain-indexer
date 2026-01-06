@@ -167,3 +167,33 @@ func (c *Client) ChainID() *big.Int {
 func (c *Client) EthClient() *ethclient.Client {
 	return c.client
 }
+
+// CallContract executes a contract call (eth_call) without creating a transaction
+func (c *Client) CallContract(ctx context.Context, contractAddr common.Address, data []byte) ([]byte, error) {
+	var result []byte
+	var err error
+
+	msg := ethereum.CallMsg{
+		To:   &contractAddr,
+		Data: data,
+	}
+
+	for i := 0; i <= c.config.MaxRetries; i++ {
+		result, err = c.client.CallContract(ctx, msg, nil)
+		if err == nil {
+			return result, nil
+		}
+
+		c.logger.Warn("Failed to call contract, retrying",
+			zap.String("contract", contractAddr.Hex()),
+			zap.Int("attempt", i+1),
+			zap.Error(err),
+		)
+
+		if i < c.config.MaxRetries {
+			time.Sleep(c.config.RetryDelay)
+		}
+	}
+
+	return nil, fmt.Errorf("failed to call contract %s after %d retries: %w", contractAddr.Hex(), c.config.MaxRetries, err)
+}
