@@ -39,11 +39,11 @@ func NewTransferService(
 
 // TransferResponse is the API response for transfer queries
 type TransferResponse struct {
-	Transfers  []TransferDTO `json:"transfers"`
-	Total      int64         `json:"total"`
-	Limit      int           `json:"limit"`
-	Offset     int           `json:"offset"`
-	HasMore    bool          `json:"has_more"`
+	Transfers []TransferDTO `json:"transfers"`
+	Total     int64         `json:"total"`
+	Limit     int           `json:"limit"`
+	Offset    int           `json:"offset"`
+	HasMore   bool          `json:"has_more"`
 }
 
 // TransferDTO is the API representation of a transfer

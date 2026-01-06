@@ -135,7 +135,7 @@ func (r *TransferRepo) BatchInsert(ctx context.Context, transfers []entities.Tra
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	query := `
 		INSERT INTO transfers (tx_hash, log_index, block_number, block_timestamp,

@@ -18,27 +18,27 @@ import (
 
 // IndexerService orchestrates the indexing process
 type IndexerService struct {
-	fetcher       *ethereum.Fetcher
-	ethClient     *ethereum.Client
-	tokenRepo     repositories.TokenRepository
-	transferRepo  repositories.TransferRepository
-	stateRepo     repositories.IndexerStateRepository
-	config        config.IndexerConfig
-	logger        *zap.Logger
-	metrics       *IndexerMetrics
-	stopCh        chan struct{}
-	wg            sync.WaitGroup
+	fetcher      *ethereum.Fetcher
+	ethClient    *ethereum.Client
+	tokenRepo    repositories.TokenRepository
+	transferRepo repositories.TransferRepository
+	stateRepo    repositories.IndexerStateRepository
+	config       config.IndexerConfig
+	logger       *zap.Logger
+	metrics      *IndexerMetrics
+	stopCh       chan struct{}
+	wg           sync.WaitGroup
 }
 
 // IndexerMetrics tracks indexer performance
 type IndexerMetrics struct {
-	mu                  sync.RWMutex
-	BlocksIndexed       int64
-	TransfersIndexed    int64
-	LastIndexedBlock    int64
-	LastIndexedTime     time.Time
-	IndexingLatencyMs   int64
-	ErrorCount          int64
+	mu                sync.RWMutex
+	BlocksIndexed     int64
+	TransfersIndexed  int64
+	LastIndexedBlock  int64
+	LastIndexedTime   time.Time
+	IndexingLatencyMs int64
+	ErrorCount        int64
 }
 
 // NewIndexerService creates a new indexer service
@@ -173,10 +173,10 @@ func (s *IndexerService) indexNewBlocks(ctx context.Context) {
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(s.config.WorkerCount)
 
-	for _, addr := range s.config.TokenAddresses {
-		addr := strings.ToLower(addr)
+	for _, tokenAddr := range s.config.TokenAddresses {
+		normalizedAddr := strings.ToLower(tokenAddr)
 		g.Go(func() error {
-			return s.indexTokenTransfers(gCtx, addr, safeBlock)
+			return s.indexTokenTransfers(gCtx, normalizedAddr, safeBlock)
 		})
 	}
 
@@ -269,7 +269,7 @@ func (s *IndexerService) Backfill(ctx context.Context, tokenAddress string, from
 	}
 
 	defer func() {
-		s.stateRepo.SetBackfilling(ctx, tokenAddress, false, nil, nil)
+		_ = s.stateRepo.SetBackfilling(ctx, tokenAddress, false, nil, nil)
 	}()
 
 	ranges := ethereum.SplitBlockRange(fromBlock, toBlock, s.config.BackfillBatchSize)

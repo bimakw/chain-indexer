@@ -1,0 +1,60 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - unconvert
+    - bodyclose
+    - nilerr
+    - errorlint
+    - gosec
+    - prealloc
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+  govet:
+    enable:
+      - shadow
+  goimports:
+    local-prefixes: github.com/bimakw/chain-indexer
+  gosec:
+    excludes:
+      - G104 # Audit errors not checked (handled by errcheck)
+      - G115 # Integer overflow conversion - safe for Ethereum block numbers
+  misspell:
+    locale: US
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
+    # Exclude some gosec rules for test utilities
+    - path: testutil/
+      linters:
+        - gosec
+    # Exclude errcheck for logger.Sync() in main functions
+    - path: cmd/
+      linters:
+        - errcheck
+      text: "logger.Sync"
+    # Exclude copylocks for IndexerMetrics (known design)
+    - path: indexer_service\.go
+      linters:
+        - govet
+      text: "copylocks"
+  max-issues-per-linter: 50
+  max-same-issues: 10

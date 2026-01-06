@@ -17,17 +17,17 @@ import (
 
 // Fetcher handles fetching and parsing blockchain data
 type Fetcher struct {
-	client  *Client
-	config  config.IndexerConfig
-	logger  *zap.Logger
+	client *Client
+	config config.IndexerConfig
+	logger *zap.Logger
 }
 
 // NewFetcher creates a new blockchain data fetcher
 func NewFetcher(client *Client, cfg config.IndexerConfig, logger *zap.Logger) *Fetcher {
 	return &Fetcher{
-		client:  client,
-		config:  cfg,
-		logger:  logger,
+		client: client,
+		config: cfg,
+		logger: logger,
 	}
 }
 

@@ -29,11 +29,11 @@ type Config struct {
 
 // EthereumConfig holds Ethereum node connection settings
 type EthereumConfig struct {
-	RPCURL          string        `envconfig:"ETH_RPC_URL" default:"http://localhost:8545"`
-	ChainID         int64         `envconfig:"ETH_CHAIN_ID" default:"1"`
-	RequestTimeout  time.Duration `envconfig:"ETH_REQUEST_TIMEOUT" default:"30s"`
-	MaxRetries      int           `envconfig:"ETH_MAX_RETRIES" default:"3"`
-	RetryDelay      time.Duration `envconfig:"ETH_RETRY_DELAY" default:"1s"`
+	RPCURL         string        `envconfig:"ETH_RPC_URL" default:"http://localhost:8545"`
+	ChainID        int64         `envconfig:"ETH_CHAIN_ID" default:"1"`
+	RequestTimeout time.Duration `envconfig:"ETH_REQUEST_TIMEOUT" default:"30s"`
+	MaxRetries     int           `envconfig:"ETH_MAX_RETRIES" default:"3"`
+	RetryDelay     time.Duration `envconfig:"ETH_RETRY_DELAY" default:"1s"`
 }
 
 // DatabaseConfig holds PostgreSQL connection settings
@@ -70,12 +70,12 @@ type APIConfig struct {
 
 // IndexerConfig holds indexer-specific settings
 type IndexerConfig struct {
-	MetricsPort       int           `envconfig:"INDEXER_METRICS_PORT" default:"8080"`
-	BatchSize         int           `envconfig:"INDEXER_BATCH_SIZE" default:"100"`
-	BlockConfirmations int          `envconfig:"INDEXER_BLOCK_CONFIRMATIONS" default:"12"`
-	PollInterval      time.Duration `envconfig:"INDEXER_POLL_INTERVAL" default:"12s"`
-	BackfillBatchSize int           `envconfig:"INDEXER_BACKFILL_BATCH_SIZE" default:"1000"`
-	WorkerCount       int           `envconfig:"INDEXER_WORKER_COUNT" default:"4"`
+	MetricsPort        int           `envconfig:"INDEXER_METRICS_PORT" default:"8080"`
+	BatchSize          int           `envconfig:"INDEXER_BATCH_SIZE" default:"100"`
+	BlockConfirmations int           `envconfig:"INDEXER_BLOCK_CONFIRMATIONS" default:"12"`
+	PollInterval       time.Duration `envconfig:"INDEXER_POLL_INTERVAL" default:"12s"`
+	BackfillBatchSize  int           `envconfig:"INDEXER_BACKFILL_BATCH_SIZE" default:"1000"`
+	WorkerCount        int           `envconfig:"INDEXER_WORKER_COUNT" default:"4"`
 
 	// Tokens to index (comma-separated addresses)
 	TokenAddresses []string `envconfig:"INDEXER_TOKEN_ADDRESSES" default:"0xdAC17F958D2ee523a2206206994597C13D831ec7,0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"`

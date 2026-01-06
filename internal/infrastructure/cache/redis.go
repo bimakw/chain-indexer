@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -55,7 +56,7 @@ func (c *RedisCache) Close() error {
 func (c *RedisCache) Get(ctx context.Context, key string, dest interface{}) error {
 	val, err := c.client.Get(ctx, key).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return ErrCacheMiss
 		}
 		return fmt.Errorf("failed to get from cache: %w", err)
