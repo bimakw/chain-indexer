@@ -63,11 +63,13 @@ func main() {
 	transferService := services.NewTransferService(transferRepo, tokenRepo, redisCache, logger)
 	tokenService := services.NewTokenService(tokenRepo, redisCache, logger)
 	statsService := services.NewStatsService(transferRepo, tokenRepo, redisCache, logger)
+	holdersService := services.NewHoldersService(transferRepo, tokenRepo, redisCache, logger)
 
 	// Create handlers
 	transferHandler := handlers.NewTransferHandler(transferService, logger)
 	tokenHandler := handlers.NewTokenHandler(tokenService, logger)
 	statsHandler := handlers.NewStatsHandler(statsService, logger)
+	holdersHandler := handlers.NewHoldersHandler(holdersService, logger)
 
 	var cacheChecker handlers.HealthChecker
 	if redisCache != nil {
@@ -97,6 +99,8 @@ func main() {
 		transferHandler.RegisterRoutes(r)
 		tokenHandler.RegisterRoutes(r)
 		r.Get("/tokens/{address}/stats", statsHandler.GetTokenStats)
+		r.Get("/tokens/{address}/holders", holdersHandler.GetTopHolders)
+		r.Get("/tokens/{address}/holders/{holder_address}", holdersHandler.GetHolderBalance)
 	})
 
 	// Start server

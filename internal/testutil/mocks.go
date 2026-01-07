@@ -15,11 +15,13 @@ type MockTransferRepository struct {
 	transfers []entities.Transfer
 
 	// Function hooks for custom behavior
-	GetByFilterFunc    func(ctx context.Context, filter entities.TransferFilter) ([]entities.Transfer, error)
-	GetCountFunc       func(ctx context.Context, filter entities.TransferFilter) (int64, error)
-	BatchInsertFunc    func(ctx context.Context, transfers []entities.Transfer) error
-	GetLatestBlockFunc func(ctx context.Context, tokenAddress string) (int64, error)
-	GetTokenStatsFunc  func(ctx context.Context, tokenAddress string) (*repositories.TokenStatsResult, error)
+	GetByFilterFunc      func(ctx context.Context, filter entities.TransferFilter) ([]entities.Transfer, error)
+	GetCountFunc         func(ctx context.Context, filter entities.TransferFilter) (int64, error)
+	BatchInsertFunc      func(ctx context.Context, transfers []entities.Transfer) error
+	GetLatestBlockFunc   func(ctx context.Context, tokenAddress string) (int64, error)
+	GetTokenStatsFunc    func(ctx context.Context, tokenAddress string) (*repositories.TokenStatsResult, error)
+	GetTopHoldersFunc    func(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error)
+	GetHolderBalanceFunc func(ctx context.Context, tokenAddress, holderAddress string) (*repositories.HolderBalance, error)
 
 	// Call tracking
 	Calls []MockCall
@@ -181,6 +183,63 @@ func (m *MockTransferRepository) GetTokenStats(ctx context.Context, tokenAddress
 		Volume24h:       "0",
 		Transfers7d:     0,
 		Volume7d:        "0",
+	}, nil
+}
+
+func (m *MockTransferRepository) GetTopHolders(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error) {
+	m.mu.Lock()
+	m.Calls = append(m.Calls, MockCall{Method: "GetTopHolders", Args: []interface{}{tokenAddress, limit}})
+	m.mu.Unlock()
+
+	if m.GetTopHoldersFunc != nil {
+		return m.GetTopHoldersFunc(ctx, tokenAddress, limit)
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Calculate balances from transfers
+	balances := make(map[string]int64)
+	for _, t := range m.transfers {
+		if t.TokenAddress == tokenAddress {
+			balances[t.ToAddress]++
+			balances[t.FromAddress]--
+		}
+	}
+
+	// Build result
+	var result []repositories.HolderBalance
+	rank := 1
+	for addr, bal := range balances {
+		if bal > 0 {
+			result = append(result, repositories.HolderBalance{
+				Address: addr,
+				Balance: "1000000000000000000", // Mock balance
+				Rank:    rank,
+			})
+			rank++
+			if rank > limit {
+				break
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func (m *MockTransferRepository) GetHolderBalance(ctx context.Context, tokenAddress, holderAddress string) (*repositories.HolderBalance, error) {
+	m.mu.Lock()
+	m.Calls = append(m.Calls, MockCall{Method: "GetHolderBalance", Args: []interface{}{tokenAddress, holderAddress}})
+	m.mu.Unlock()
+
+	if m.GetHolderBalanceFunc != nil {
+		return m.GetHolderBalanceFunc(ctx, tokenAddress, holderAddress)
+	}
+
+	return &repositories.HolderBalance{
+		Address: holderAddress,
+		Balance: "1000000000000000000",
+		Rank:    1,
 	}, nil
 }
 
