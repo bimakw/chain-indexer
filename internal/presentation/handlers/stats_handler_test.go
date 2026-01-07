@@ -304,3 +304,160 @@ func TestStatsHandler_ResponseContentType(t *testing.T) {
 		t.Errorf("expected Content-Type application/json, got %s", contentType)
 	}
 }
+
+func TestStatsHandler_GetHolderCount_Success(t *testing.T) {
+	handler, transferRepo, tokenRepo := setupStatsHandlerTest()
+
+	// Add token
+	tokenRepo.AddToken(testutil.CreateTestToken(
+		testutil.TokenWithAddress(testutil.USDTAddress),
+		testutil.TokenWithSymbol("USDT"),
+	))
+
+	// Setup mock holder count response
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 4523891, nil
+	}
+
+	r := chi.NewRouter()
+	r.Get("/tokens/{address}/holder-count", handler.GetHolderCount)
+
+	req := httptest.NewRequest(http.MethodGet, "/tokens/"+testutil.USDTAddress+"/holder-count", nil)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", rec.Code)
+	}
+
+	var response services.HolderCountResponse
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	data := response.Data
+	if data.TokenAddress != testutil.USDTAddress {
+		t.Errorf("expected token address %s, got %s", testutil.USDTAddress, data.TokenAddress)
+	}
+	if data.HolderCount != 4523891 {
+		t.Errorf("expected holder count 4523891, got %d", data.HolderCount)
+	}
+}
+
+func TestStatsHandler_GetHolderCount_NotFound(t *testing.T) {
+	handler, _, _ := setupStatsHandlerTest()
+
+	r := chi.NewRouter()
+	r.Get("/tokens/{address}/holder-count", handler.GetHolderCount)
+
+	req := httptest.NewRequest(http.MethodGet, "/tokens/"+testutil.USDTAddress+"/holder-count", nil)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d", rec.Code)
+	}
+
+	var response map[string]string
+	json.NewDecoder(rec.Body).Decode(&response)
+	if response["error"] != "token not found" {
+		t.Errorf("unexpected error message: %s", response["error"])
+	}
+}
+
+func TestStatsHandler_GetHolderCount_InvalidAddress(t *testing.T) {
+	handler, _, _ := setupStatsHandlerTest()
+
+	r := chi.NewRouter()
+	r.Get("/tokens/{address}/holder-count", handler.GetHolderCount)
+
+	tests := []struct {
+		name    string
+		address string
+	}{
+		{"too short", "0x1234"},
+		{"no prefix", "1111111111111111111111111111111111111111"},
+		{"wrong prefix", "1x1111111111111111111111111111111111111111"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/tokens/"+tt.address+"/holder-count", nil)
+			rec := httptest.NewRecorder()
+
+			r.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("expected status 400, got %d", rec.Code)
+			}
+
+			var response map[string]string
+			json.NewDecoder(rec.Body).Decode(&response)
+			if response["error"] != "Invalid address format" {
+				t.Errorf("unexpected error: %s", response["error"])
+			}
+		})
+	}
+}
+
+func TestStatsHandler_GetHolderCount_UppercaseAddress(t *testing.T) {
+	handler, transferRepo, tokenRepo := setupStatsHandlerTest()
+
+	tokenRepo.AddToken(testutil.CreateTestToken(
+		testutil.TokenWithAddress(testutil.USDTAddress),
+	))
+
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 1000, nil
+	}
+
+	r := chi.NewRouter()
+	r.Get("/tokens/{address}/holder-count", handler.GetHolderCount)
+
+	// Use uppercase address
+	upperAddr := "0xDAC17F958D2EE523A2206206994597C13D831EC7"
+	req := httptest.NewRequest(http.MethodGet, "/tokens/"+upperAddr+"/holder-count", nil)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", rec.Code)
+	}
+
+	var response services.HolderCountResponse
+	json.NewDecoder(rec.Body).Decode(&response)
+
+	// Should return lowercase address
+	if response.Data.TokenAddress != testutil.USDTAddress {
+		t.Errorf("expected lowercase address %s, got %s", testutil.USDTAddress, response.Data.TokenAddress)
+	}
+}
+
+func TestStatsHandler_GetHolderCount_ServiceError(t *testing.T) {
+	handler, _, tokenRepo := setupStatsHandlerTest()
+
+	tokenRepo.GetByAddressFunc = func(ctx context.Context, address string) (*entities.Token, error) {
+		return nil, errors.New("database error")
+	}
+
+	r := chi.NewRouter()
+	r.Get("/tokens/{address}/holder-count", handler.GetHolderCount)
+
+	req := httptest.NewRequest(http.MethodGet, "/tokens/"+testutil.USDTAddress+"/holder-count", nil)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("expected status 500, got %d", rec.Code)
+	}
+
+	var response map[string]string
+	json.NewDecoder(rec.Body).Decode(&response)
+	if response["error"] != "Failed to get holder count" {
+		t.Errorf("unexpected error message: %s", response["error"])
+	}
+}

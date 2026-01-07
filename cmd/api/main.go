@@ -99,6 +99,7 @@ func main() {
 		transferHandler.RegisterRoutes(r)
 		tokenHandler.RegisterRoutes(r)
 		r.Get("/tokens/{address}/stats", statsHandler.GetTokenStats)
+		r.Get("/tokens/{address}/holder-count", statsHandler.GetHolderCount)
 		r.Get("/tokens/{address}/holders", holdersHandler.GetTopHolders)
 		r.Get("/tokens/{address}/holders/{holder_address}", holdersHandler.GetHolderBalance)
 	})
