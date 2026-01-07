@@ -15,14 +15,14 @@ type MockTransferRepository struct {
 	transfers []entities.Transfer
 
 	// Function hooks for custom behavior
-	GetByFilterFunc            func(ctx context.Context, filter entities.TransferFilter) ([]entities.Transfer, error)
-	GetCountFunc               func(ctx context.Context, filter entities.TransferFilter) (int64, error)
-	BatchInsertFunc            func(ctx context.Context, transfers []entities.Transfer) error
-	GetLatestBlockFunc         func(ctx context.Context, tokenAddress string) (int64, error)
-	GetTokenStatsFunc          func(ctx context.Context, tokenAddress string) (*repositories.TokenStatsResult, error)
-	GetTopHoldersFunc          func(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error)
-	GetHolderBalanceFunc       func(ctx context.Context, tokenAddress, holderAddress string) (*repositories.HolderBalance, error)
-	GetHolderCountFunc         func(ctx context.Context, tokenAddress string) (int64, error)
+	GetByFilterFunc             func(ctx context.Context, filter entities.TransferFilter) ([]entities.Transfer, error)
+	GetCountFunc                func(ctx context.Context, filter entities.TransferFilter) (int64, error)
+	BatchInsertFunc             func(ctx context.Context, transfers []entities.Transfer) error
+	GetLatestBlockFunc          func(ctx context.Context, tokenAddress string) (int64, error)
+	GetTokenStatsFunc           func(ctx context.Context, tokenAddress string) (*repositories.TokenStatsResult, error)
+	GetTopHoldersFunc           func(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error)
+	GetHolderBalanceFunc        func(ctx context.Context, tokenAddress, holderAddress string) (*repositories.HolderBalance, error)
+	GetHolderCountFunc          func(ctx context.Context, tokenAddress string) (int64, error)
 	GetTopHoldersWithOffsetFunc func(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error)
 
 	// Call tracking

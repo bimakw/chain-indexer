@@ -103,15 +103,16 @@ func (s *HoldersService) GetTopHolders(ctx context.Context, tokenAddress string,
 	var total int64
 	countCacheKey := fmt.Sprintf("holders_count:%s", tokenAddress)
 	if s.cache != nil {
-		if err := s.cache.Get(ctx, countCacheKey, &total); err != nil {
+		if cacheErr := s.cache.Get(ctx, countCacheKey, &total); cacheErr != nil {
 			// Cache miss, fetch from database
-			total, err = s.transferRepo.GetHolderCount(ctx, tokenAddress)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get holder count: %w", err)
+			var countErr error
+			total, countErr = s.transferRepo.GetHolderCount(ctx, tokenAddress)
+			if countErr != nil {
+				return nil, fmt.Errorf("failed to get holder count: %w", countErr)
 			}
 			// Cache the count with 5 min TTL
-			if cacheErr := s.cache.SetWithTTL(ctx, countCacheKey, total, 5*time.Minute); cacheErr != nil {
-				s.logger.Warn("Failed to cache holder count", zap.Error(cacheErr))
+			if setErr := s.cache.SetWithTTL(ctx, countCacheKey, total, 5*time.Minute); setErr != nil {
+				s.logger.Warn("Failed to cache holder count", zap.Error(setErr))
 			}
 		}
 	} else {

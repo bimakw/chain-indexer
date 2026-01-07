@@ -37,17 +37,17 @@ func NewStatsService(
 
 // TokenStats is the API representation of token transfer statistics
 type TokenStats struct {
-	TokenAddress       string `json:"token_address"`
-	TotalTransfers     int64  `json:"total_transfers"`
+	TokenAddress        string `json:"token_address"`
+	TotalTransfers      int64  `json:"total_transfers"`
 	UniqueFromAddresses int64  `json:"unique_from_addresses"`
 	UniqueToAddresses   int64  `json:"unique_to_addresses"`
-	TotalVolume        string `json:"total_volume"`
-	Transfers24h       int64  `json:"transfers_24h"`
-	Volume24h          string `json:"volume_24h"`
-	Transfers7d        int64  `json:"transfers_7d"`
-	Volume7d           string `json:"volume_7d"`
-	FirstTransferAt    string `json:"first_transfer_at"`
-	LastTransferAt     string `json:"last_transfer_at"`
+	TotalVolume         string `json:"total_volume"`
+	Transfers24h        int64  `json:"transfers_24h"`
+	Volume24h           string `json:"volume_24h"`
+	Transfers7d         int64  `json:"transfers_7d"`
+	Volume7d            string `json:"volume_7d"`
+	FirstTransferAt     string `json:"first_transfer_at"`
+	LastTransferAt      string `json:"last_transfer_at"`
 }
 
 // HolderCountResponse is the API response for holder count queries
@@ -100,17 +100,17 @@ func (s *StatsService) GetTokenStats(ctx context.Context, tokenAddress string) (
 	// Build response
 	response := &TokenStatsResponse{
 		Data: TokenStats{
-			TokenAddress:       tokenAddress,
-			TotalTransfers:     stats.TotalTransfers,
+			TokenAddress:        tokenAddress,
+			TotalTransfers:      stats.TotalTransfers,
 			UniqueFromAddresses: stats.UniqueFromAddrs,
 			UniqueToAddresses:   stats.UniqueToAddrs,
-			TotalVolume:        stats.TotalVolume,
-			Transfers24h:       stats.Transfers24h,
-			Volume24h:          stats.Volume24h,
-			Transfers7d:        stats.Transfers7d,
-			Volume7d:           stats.Volume7d,
-			FirstTransferAt:    "",
-			LastTransferAt:     "",
+			TotalVolume:         stats.TotalVolume,
+			Transfers24h:        stats.Transfers24h,
+			Volume24h:           stats.Volume24h,
+			Transfers7d:         stats.Transfers7d,
+			Volume7d:            stats.Volume7d,
+			FirstTransferAt:     "",
+			LastTransferAt:      "",
 		},
 	}
 

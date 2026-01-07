@@ -188,16 +188,16 @@ func (r *TransferRepo) GetLatestBlock(ctx context.Context, tokenAddress string) 
 
 // statsRow holds the result of the stats query
 type statsRow struct {
-	TotalTransfers  int64   `db:"total_transfers"`
-	UniqueFrom      int64   `db:"unique_from"`
-	UniqueTo        int64   `db:"unique_to"`
-	TotalVolume     string  `db:"total_volume"`
-	FirstTransfer   *string `db:"first_transfer"`
-	LastTransfer    *string `db:"last_transfer"`
-	Transfers24h    int64   `db:"transfers_24h"`
-	Volume24h       string  `db:"volume_24h"`
-	Transfers7d     int64   `db:"transfers_7d"`
-	Volume7d        string  `db:"volume_7d"`
+	TotalTransfers int64   `db:"total_transfers"`
+	UniqueFrom     int64   `db:"unique_from"`
+	UniqueTo       int64   `db:"unique_to"`
+	TotalVolume    string  `db:"total_volume"`
+	FirstTransfer  *string `db:"first_transfer"`
+	LastTransfer   *string `db:"last_transfer"`
+	Transfers24h   int64   `db:"transfers_24h"`
+	Volume24h      string  `db:"volume_24h"`
+	Transfers7d    int64   `db:"transfers_7d"`
+	Volume7d       string  `db:"volume_7d"`
 }
 
 // GetTokenStats returns aggregated transfer statistics for a token
