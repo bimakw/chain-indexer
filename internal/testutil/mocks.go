@@ -632,3 +632,103 @@ func (m *MockHealthChecker) SetHealthy(healthy bool) {
 		m.Error = errors.New("health check failed")
 	}
 }
+
+// MockPortfolioRepository is a mock implementation of PortfolioRepository
+type MockPortfolioRepository struct {
+	mu sync.RWMutex
+
+	// Function hooks for custom behavior
+	GetWalletHoldingsFunc        func(ctx context.Context, walletAddress string) ([]entities.TokenHolding, error)
+	GetWalletHoldingByTokenFunc  func(ctx context.Context, walletAddress, tokenAddress string) (*entities.TokenHolding, error)
+	GetWalletTokenCountFunc      func(ctx context.Context, walletAddress string) (int64, error)
+	GetWalletTransferSummaryFunc func(ctx context.Context, walletAddress string) (*repositories.WalletTransferSummary, error)
+
+	// Call tracking
+	Calls []MockCall
+}
+
+func NewMockPortfolioRepository() *MockPortfolioRepository {
+	return &MockPortfolioRepository{
+		Calls: make([]MockCall, 0),
+	}
+}
+
+func (m *MockPortfolioRepository) GetWalletHoldings(ctx context.Context, walletAddress string) ([]entities.TokenHolding, error) {
+	m.mu.Lock()
+	m.Calls = append(m.Calls, MockCall{Method: "GetWalletHoldings", Args: []interface{}{walletAddress}})
+	m.mu.Unlock()
+
+	if m.GetWalletHoldingsFunc != nil {
+		return m.GetWalletHoldingsFunc(ctx, walletAddress)
+	}
+
+	// Default mock implementation
+	return []entities.TokenHolding{
+		{
+			TokenAddress: "0xdac17f958d2ee523a2206206994597c13d831ec7",
+			TokenName:    "Tether USD",
+			TokenSymbol:  "USDT",
+			Decimals:     6,
+			BalanceStr:   "1000000000",
+			BalanceHuman: "1000.000000",
+		},
+	}, nil
+}
+
+func (m *MockPortfolioRepository) GetWalletHoldingByToken(ctx context.Context, walletAddress, tokenAddress string) (*entities.TokenHolding, error) {
+	m.mu.Lock()
+	m.Calls = append(m.Calls, MockCall{Method: "GetWalletHoldingByToken", Args: []interface{}{walletAddress, tokenAddress}})
+	m.mu.Unlock()
+
+	if m.GetWalletHoldingByTokenFunc != nil {
+		return m.GetWalletHoldingByTokenFunc(ctx, walletAddress, tokenAddress)
+	}
+
+	// Default mock implementation
+	return &entities.TokenHolding{
+		TokenAddress: tokenAddress,
+		TokenName:    "Mock Token",
+		TokenSymbol:  "MOCK",
+		Decimals:     18,
+		BalanceStr:   "1000000000000000000",
+		BalanceHuman: "1",
+	}, nil
+}
+
+func (m *MockPortfolioRepository) GetWalletTokenCount(ctx context.Context, walletAddress string) (int64, error) {
+	m.mu.Lock()
+	m.Calls = append(m.Calls, MockCall{Method: "GetWalletTokenCount", Args: []interface{}{walletAddress}})
+	m.mu.Unlock()
+
+	if m.GetWalletTokenCountFunc != nil {
+		return m.GetWalletTokenCountFunc(ctx, walletAddress)
+	}
+
+	return 1, nil
+}
+
+func (m *MockPortfolioRepository) GetWalletTransferSummary(ctx context.Context, walletAddress string) (*repositories.WalletTransferSummary, error) {
+	m.mu.Lock()
+	m.Calls = append(m.Calls, MockCall{Method: "GetWalletTransferSummary", Args: []interface{}{walletAddress}})
+	m.mu.Unlock()
+
+	if m.GetWalletTransferSummaryFunc != nil {
+		return m.GetWalletTransferSummaryFunc(ctx, walletAddress)
+	}
+
+	// Default mock implementation
+	return &repositories.WalletTransferSummary{
+		TotalTransfersIn:  100,
+		TotalTransfersOut: 50,
+		TotalVolumeIn:     "5000000000",
+		TotalVolumeOut:    "2500000000",
+		UniqueTokens:      3,
+	}, nil
+}
+
+// Reset clears all calls
+func (m *MockPortfolioRepository) Reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.Calls = make([]MockCall, 0)
+}
