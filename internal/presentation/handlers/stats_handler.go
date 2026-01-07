@@ -52,6 +52,33 @@ func (h *StatsHandler) GetTokenStats(w http.ResponseWriter, r *http.Request) {
 	h.respondJSON(w, http.StatusOK, response)
 }
 
+// GetHolderCount handles GET /api/v1/tokens/{address}/holder-count
+func (h *StatsHandler) GetHolderCount(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	address := chi.URLParam(r, "address")
+
+	if !isValidAddress(address) {
+		h.respondError(w, http.StatusBadRequest, "Invalid address format")
+		return
+	}
+
+	address = strings.ToLower(address)
+
+	response, err := h.service.GetHolderCount(ctx, address)
+	if err != nil {
+		h.logger.Error("Failed to get holder count", zap.Error(err), zap.String("address", address))
+		h.respondError(w, http.StatusInternalServerError, "Failed to get holder count")
+		return
+	}
+
+	if response == nil {
+		h.respondError(w, http.StatusNotFound, "token not found")
+		return
+	}
+
+	h.respondJSON(w, http.StatusOK, response)
+}
+
 func (h *StatsHandler) respondJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

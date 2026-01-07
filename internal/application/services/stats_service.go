@@ -50,6 +50,17 @@ type TokenStats struct {
 	LastTransferAt     string `json:"last_transfer_at"`
 }
 
+// HolderCountResponse is the API response for holder count queries
+type HolderCountResponse struct {
+	Data HolderCountDTO `json:"data"`
+}
+
+// HolderCountDTO represents the holder count data
+type HolderCountDTO struct {
+	TokenAddress string `json:"token_address"`
+	HolderCount  int64  `json:"holder_count"`
+}
+
 // TokenStatsResponse is the API response for token stats queries
 type TokenStatsResponse struct {
 	Data TokenStats `json:"data"`
@@ -114,6 +125,55 @@ func (s *StatsService) GetTokenStats(ctx context.Context, tokenAddress string) (
 	// Cache the response with shorter TTL (60 seconds for stats)
 	if s.cache != nil {
 		if err := s.cache.SetWithTTL(ctx, cacheKey, response, 60*time.Second); err != nil {
+			s.logger.Warn("Failed to cache response", zap.Error(err))
+		}
+	}
+
+	return response, nil
+}
+
+// GetHolderCount retrieves the total number of unique holders for a token
+func (s *StatsService) GetHolderCount(ctx context.Context, tokenAddress string) (*HolderCountResponse, error) {
+	tokenAddress = strings.ToLower(tokenAddress)
+
+	// Generate cache key
+	cacheKey := fmt.Sprintf("holder_count:%s", tokenAddress)
+
+	// Try cache first
+	var cached HolderCountResponse
+	if s.cache != nil {
+		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
+			s.logger.Debug("Cache hit", zap.String("key", cacheKey))
+			return &cached, nil
+		}
+	}
+
+	// Check if token exists
+	token, err := s.tokenRepo.GetByAddress(ctx, tokenAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check token: %w", err)
+	}
+	if token == nil {
+		return nil, nil // Token not found
+	}
+
+	// Get holder count from database
+	count, err := s.transferRepo.GetHolderCount(ctx, tokenAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get holder count: %w", err)
+	}
+
+	// Build response
+	response := &HolderCountResponse{
+		Data: HolderCountDTO{
+			TokenAddress: tokenAddress,
+			HolderCount:  count,
+		},
+	}
+
+	// Cache the response with 5 minutes TTL (holder count changes slowly)
+	if s.cache != nil {
+		if err := s.cache.SetWithTTL(ctx, cacheKey, response, 300*time.Second); err != nil {
 			s.logger.Warn("Failed to cache response", zap.Error(err))
 		}
 	}

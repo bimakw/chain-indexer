@@ -233,3 +233,117 @@ func TestStatsService_GetTokenStats_TransferRepoError(t *testing.T) {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
+
+func TestStatsService_GetHolderCount_Success(t *testing.T) {
+	service, transferRepo, tokenRepo := setupStatsServiceTest()
+	ctx := context.Background()
+
+	// Add token
+	tokenRepo.AddToken(testutil.CreateTestToken(
+		testutil.TokenWithAddress(testutil.USDTAddress),
+		testutil.TokenWithSymbol("USDT"),
+	))
+
+	// Setup mock holder count response
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 4523891, nil
+	}
+
+	response, err := service.GetHolderCount(ctx, testutil.USDTAddress)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if response == nil {
+		t.Fatal("expected non-nil response")
+	}
+
+	data := response.Data
+	if data.TokenAddress != testutil.USDTAddress {
+		t.Errorf("expected token address %s, got %s", testutil.USDTAddress, data.TokenAddress)
+	}
+	if data.HolderCount != 4523891 {
+		t.Errorf("expected holder count 4523891, got %d", data.HolderCount)
+	}
+}
+
+func TestStatsService_GetHolderCount_TokenNotFound(t *testing.T) {
+	service, _, _ := setupStatsServiceTest()
+	ctx := context.Background()
+
+	response, err := service.GetHolderCount(ctx, testutil.USDTAddress)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if response != nil {
+		t.Error("expected nil response for non-existent token")
+	}
+}
+
+func TestStatsService_GetHolderCount_Lowercase(t *testing.T) {
+	service, transferRepo, tokenRepo := setupStatsServiceTest()
+	ctx := context.Background()
+
+	// Add token with lowercase address
+	tokenRepo.AddToken(testutil.CreateTestToken(
+		testutil.TokenWithAddress(testutil.USDTAddress),
+	))
+
+	// Track which address was queried
+	var queriedAddress string
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		queriedAddress = tokenAddress
+		return 1000, nil
+	}
+
+	// Use uppercase address
+	upperAddr := "0xDAC17F958D2EE523A2206206994597C13D831EC7"
+	_, err := service.GetHolderCount(ctx, upperAddr)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if queriedAddress != testutil.USDTAddress {
+		t.Errorf("expected lowercase address %s, got %s", testutil.USDTAddress, queriedAddress)
+	}
+}
+
+func TestStatsService_GetHolderCount_TokenRepoError(t *testing.T) {
+	service, _, tokenRepo := setupStatsServiceTest()
+	ctx := context.Background()
+
+	tokenRepo.GetByAddressFunc = func(ctx context.Context, address string) (*entities.Token, error) {
+		return nil, errors.New("database connection failed")
+	}
+
+	_, err := service.GetHolderCount(ctx, testutil.USDTAddress)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err.Error() != "failed to check token: database connection failed" {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestStatsService_GetHolderCount_TransferRepoError(t *testing.T) {
+	service, transferRepo, tokenRepo := setupStatsServiceTest()
+	ctx := context.Background()
+
+	// Add token
+	tokenRepo.AddToken(testutil.CreateTestToken(
+		testutil.TokenWithAddress(testutil.USDTAddress),
+	))
+
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 0, errors.New("query timeout")
+	}
+
+	_, err := service.GetHolderCount(ctx, testutil.USDTAddress)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err.Error() != "failed to get holder count: query timeout" {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
