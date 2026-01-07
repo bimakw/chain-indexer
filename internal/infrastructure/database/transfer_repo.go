@@ -414,3 +414,78 @@ func (r *TransferRepo) GetHolderBalance(ctx context.Context, tokenAddress, holde
 		Rank:    rank,
 	}, nil
 }
+
+// GetHolderCount returns the count of unique holders with positive balance
+func (r *TransferRepo) GetHolderCount(ctx context.Context, tokenAddress string) (int64, error) {
+	query := `
+		WITH balances AS (
+			SELECT address, SUM(amount) as balance
+			FROM (
+				SELECT to_address as address, value as amount
+				FROM transfers WHERE token_address = $1
+				UNION ALL
+				SELECT from_address as address, -value as amount
+				FROM transfers WHERE token_address = $1
+			) t
+			GROUP BY address
+			HAVING SUM(amount) > 0
+		)
+		SELECT COUNT(*) FROM balances
+	`
+
+	var count int64
+	if err := r.db.GetContext(ctx, &count, query, tokenAddress); err != nil {
+		return 0, fmt.Errorf("failed to get holder count: %w", err)
+	}
+
+	return count, nil
+}
+
+// GetTopHoldersWithOffset returns top token holders with pagination offset
+func (r *TransferRepo) GetTopHoldersWithOffset(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error) {
+	query := `
+		WITH balances AS (
+			SELECT
+				address,
+				SUM(amount) as balance
+			FROM (
+				-- Incoming transfers (positive)
+				SELECT to_address as address, value as amount
+				FROM transfers
+				WHERE token_address = $1
+
+				UNION ALL
+
+				-- Outgoing transfers (negative)
+				SELECT from_address as address, -value as amount
+				FROM transfers
+				WHERE token_address = $1
+			) t
+			GROUP BY address
+			HAVING SUM(amount) > 0
+		)
+		SELECT
+			address,
+			balance::TEXT as balance,
+			ROW_NUMBER() OVER (ORDER BY balance DESC)::INTEGER as rank
+		FROM balances
+		ORDER BY balance DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	var rows []holderBalanceRow
+	if err := r.db.SelectContext(ctx, &rows, query, tokenAddress, limit, offset); err != nil {
+		return nil, fmt.Errorf("failed to get top holders: %w", err)
+	}
+
+	result := make([]repositories.HolderBalance, len(rows))
+	for i, row := range rows {
+		result[i] = repositories.HolderBalance{
+			Address: row.Address,
+			Balance: row.Balance,
+			Rank:    row.Rank,
+		}
+	}
+
+	return result, nil
+}

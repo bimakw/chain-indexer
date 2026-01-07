@@ -44,8 +44,13 @@ func TestHoldersHandler_GetTopHolders_Success(t *testing.T) {
 		testutil.TokenWithSymbol("USDT"),
 	))
 
+	// Setup mock holder count
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 100, nil
+	}
+
 	// Setup mock holders response
-	transferRepo.GetTopHoldersFunc = func(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error) {
+	transferRepo.GetTopHoldersWithOffsetFunc = func(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error) {
 		return []repositories.HolderBalance{
 			{Address: "0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503", Balance: "999999999999999999999", Rank: 1},
 			{Address: "0x1111111111111111111111111111111111111111", Balance: "500000000000000000000", Rank: 2},
@@ -84,6 +89,15 @@ func TestHoldersHandler_GetTopHolders_Success(t *testing.T) {
 	if holder.Rank != 1 {
 		t.Errorf("expected rank 1, got %d", holder.Rank)
 	}
+
+	// Check pagination metadata
+	if response.Pagination.Total != 100 {
+		t.Errorf("expected total 100, got %d", response.Pagination.Total)
+	}
+	// With total=100, limit=100, offset=0: 0+100 >= 100, so hasMore should be false
+	if response.Pagination.HasMore {
+		t.Error("expected has_more to be false (0 + 100 >= 100)")
+	}
 }
 
 func TestHoldersHandler_GetTopHolders_WithLimit(t *testing.T) {
@@ -93,8 +107,13 @@ func TestHoldersHandler_GetTopHolders_WithLimit(t *testing.T) {
 		testutil.TokenWithAddress(testutil.USDTAddress),
 	))
 
+	// Setup mock holder count
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 100, nil
+	}
+
 	var capturedLimit int
-	transferRepo.GetTopHoldersFunc = func(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error) {
+	transferRepo.GetTopHoldersWithOffsetFunc = func(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error) {
 		capturedLimit = limit
 		return []repositories.HolderBalance{
 			{Address: "0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503", Balance: "1000", Rank: 1},
@@ -125,8 +144,13 @@ func TestHoldersHandler_GetTopHolders_MaxLimit(t *testing.T) {
 		testutil.TokenWithAddress(testutil.USDTAddress),
 	))
 
+	// Setup mock holder count
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 100, nil
+	}
+
 	var capturedLimit int
-	transferRepo.GetTopHoldersFunc = func(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error) {
+	transferRepo.GetTopHoldersWithOffsetFunc = func(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error) {
 		capturedLimit = limit
 		return []repositories.HolderBalance{}, nil
 	}
@@ -212,7 +236,12 @@ func TestHoldersHandler_GetTopHolders_UppercaseAddress(t *testing.T) {
 		testutil.TokenWithAddress(testutil.USDTAddress),
 	))
 
-	transferRepo.GetTopHoldersFunc = func(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error) {
+	// Setup mock holder count
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 100, nil
+	}
+
+	transferRepo.GetTopHoldersWithOffsetFunc = func(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error) {
 		return []repositories.HolderBalance{
 			{Address: "0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503", Balance: "1000", Rank: 1},
 		}, nil
@@ -266,7 +295,12 @@ func TestHoldersHandler_GetTopHolders_EmptyResult(t *testing.T) {
 		testutil.TokenWithAddress(testutil.USDTAddress),
 	))
 
-	transferRepo.GetTopHoldersFunc = func(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error) {
+	// Setup mock holder count
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 0, nil
+	}
+
+	transferRepo.GetTopHoldersWithOffsetFunc = func(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error) {
 		return []repositories.HolderBalance{}, nil
 	}
 
@@ -287,6 +321,56 @@ func TestHoldersHandler_GetTopHolders_EmptyResult(t *testing.T) {
 
 	if len(response.Data) != 0 {
 		t.Errorf("expected 0 holders, got %d", len(response.Data))
+	}
+}
+
+func TestHoldersHandler_GetTopHolders_WithOffset(t *testing.T) {
+	handler, transferRepo, tokenRepo := setupHoldersHandlerTest()
+
+	tokenRepo.AddToken(testutil.CreateTestToken(
+		testutil.TokenWithAddress(testutil.USDTAddress),
+	))
+
+	// Setup mock holder count
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 500, nil
+	}
+
+	var capturedOffset int
+	transferRepo.GetTopHoldersWithOffsetFunc = func(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error) {
+		capturedOffset = offset
+		return []repositories.HolderBalance{
+			{Address: "0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503", Balance: "1000", Rank: offset + 1},
+		}, nil
+	}
+
+	r := chi.NewRouter()
+	r.Get("/tokens/{address}/holders", handler.GetTopHolders)
+
+	req := httptest.NewRequest(http.MethodGet, "/tokens/"+testutil.USDTAddress+"/holders?offset=200", nil)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", rec.Code)
+	}
+
+	if capturedOffset != 200 {
+		t.Errorf("expected offset 200, got %d", capturedOffset)
+	}
+
+	var response services.TopHoldersResponse
+	json.NewDecoder(rec.Body).Decode(&response)
+
+	if response.Pagination.Offset != 200 {
+		t.Errorf("expected pagination offset 200, got %d", response.Pagination.Offset)
+	}
+	if response.Pagination.Total != 500 {
+		t.Errorf("expected pagination total 500, got %d", response.Pagination.Total)
+	}
+	if !response.Pagination.HasMore {
+		t.Error("expected has_more to be true (200 + 100 < 500)")
 	}
 }
 
@@ -483,7 +567,12 @@ func TestHoldersHandler_ResponseContentType(t *testing.T) {
 		testutil.TokenWithAddress(testutil.USDTAddress),
 	))
 
-	transferRepo.GetTopHoldersFunc = func(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error) {
+	// Setup mock holder count
+	transferRepo.GetHolderCountFunc = func(ctx context.Context, tokenAddress string) (int64, error) {
+		return 0, nil
+	}
+
+	transferRepo.GetTopHoldersWithOffsetFunc = func(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error) {
 		return []repositories.HolderBalance{}, nil
 	}
 
