@@ -58,18 +58,21 @@ func main() {
 	// Create repositories
 	tokenRepo := database.NewTokenRepo(db.DB())
 	transferRepo := database.NewTransferRepo(db.DB())
+	portfolioRepo := database.NewPortfolioRepo(db.DB())
 
 	// Create services
 	transferService := services.NewTransferService(transferRepo, tokenRepo, redisCache, logger)
 	tokenService := services.NewTokenService(tokenRepo, redisCache, logger)
 	statsService := services.NewStatsService(transferRepo, tokenRepo, redisCache, logger)
 	holdersService := services.NewHoldersService(transferRepo, tokenRepo, redisCache, logger)
+	portfolioService := services.NewPortfolioService(portfolioRepo, redisCache, logger)
 
 	// Create handlers
 	transferHandler := handlers.NewTransferHandler(transferService, logger)
 	tokenHandler := handlers.NewTokenHandler(tokenService, logger)
 	statsHandler := handlers.NewStatsHandler(statsService, logger)
 	holdersHandler := handlers.NewHoldersHandler(holdersService, logger)
+	portfolioHandler := handlers.NewPortfolioHandler(portfolioService, logger)
 
 	var cacheChecker handlers.HealthChecker
 	if redisCache != nil {
@@ -98,6 +101,7 @@ func main() {
 	r.Route("/api/v1", func(r chi.Router) {
 		transferHandler.RegisterRoutes(r)
 		tokenHandler.RegisterRoutes(r)
+		portfolioHandler.RegisterRoutes(r)
 		r.Get("/tokens/{address}/stats", statsHandler.GetTokenStats)
 		r.Get("/tokens/{address}/holder-count", statsHandler.GetHolderCount)
 		r.Get("/tokens/{address}/holders", holdersHandler.GetTopHolders)
