@@ -2,9 +2,24 @@ package repositories
 
 import (
 	"context"
+	"time"
 
 	"github.com/bimakw/chain-indexer/internal/domain/entities"
 )
+
+// TokenStatsResult holds aggregated statistics for a token
+type TokenStatsResult struct {
+	TotalTransfers  int64
+	UniqueFromAddrs int64
+	UniqueToAddrs   int64
+	TotalVolume     string
+	Transfers24h    int64
+	Volume24h       string
+	Transfers7d     int64
+	Volume7d        string
+	FirstTransferAt *time.Time
+	LastTransferAt  *time.Time
+}
 
 // TransferRepository defines the interface for transfer data operations
 type TransferRepository interface {
@@ -19,4 +34,7 @@ type TransferRepository interface {
 
 	// GetLatestBlock returns the latest indexed block for a token
 	GetLatestBlock(ctx context.Context, tokenAddress string) (int64, error)
+
+	// GetTokenStats returns aggregated transfer statistics for a token
+	GetTokenStats(ctx context.Context, tokenAddress string) (*TokenStatsResult, error)
 }
