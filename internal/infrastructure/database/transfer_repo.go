@@ -288,3 +288,129 @@ func parseTimestamp(s string) (time.Time, error) {
 	}
 	return time.Time{}, fmt.Errorf("failed to parse timestamp: %s", s)
 }
+
+// holderBalanceRow holds the result of the holder balance query
+type holderBalanceRow struct {
+	Address string `db:"address"`
+	Balance string `db:"balance"`
+	Rank    int    `db:"rank"`
+}
+
+// GetTopHolders returns top token holders sorted by balance
+func (r *TransferRepo) GetTopHolders(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error) {
+	query := `
+		WITH balances AS (
+			SELECT
+				address,
+				SUM(amount) as balance
+			FROM (
+				-- Incoming transfers (positive)
+				SELECT to_address as address, value as amount
+				FROM transfers
+				WHERE token_address = $1
+
+				UNION ALL
+
+				-- Outgoing transfers (negative)
+				SELECT from_address as address, -value as amount
+				FROM transfers
+				WHERE token_address = $1
+			) t
+			GROUP BY address
+			HAVING SUM(amount) > 0
+		)
+		SELECT
+			address,
+			balance::TEXT as balance,
+			ROW_NUMBER() OVER (ORDER BY balance DESC)::INTEGER as rank
+		FROM balances
+		ORDER BY balance DESC
+		LIMIT $2
+	`
+
+	var rows []holderBalanceRow
+	if err := r.db.SelectContext(ctx, &rows, query, tokenAddress, limit); err != nil {
+		return nil, fmt.Errorf("failed to get top holders: %w", err)
+	}
+
+	result := make([]repositories.HolderBalance, len(rows))
+	for i, row := range rows {
+		result[i] = repositories.HolderBalance{
+			Address: row.Address,
+			Balance: row.Balance,
+			Rank:    row.Rank,
+		}
+	}
+
+	return result, nil
+}
+
+// GetHolderBalance returns balance for a specific holder
+func (r *TransferRepo) GetHolderBalance(ctx context.Context, tokenAddress, holderAddress string) (*repositories.HolderBalance, error) {
+	// First get the balance
+	balanceQuery := `
+		SELECT
+			COALESCE(SUM(
+				CASE
+					WHEN to_address = $2 THEN value
+					WHEN from_address = $2 THEN -value
+					ELSE 0
+				END
+			), 0)::TEXT as balance
+		FROM transfers
+		WHERE token_address = $1
+		AND (to_address = $2 OR from_address = $2)
+	`
+
+	var balance string
+	if err := r.db.GetContext(ctx, &balance, balanceQuery, tokenAddress, holderAddress); err != nil {
+		return nil, fmt.Errorf("failed to get holder balance: %w", err)
+	}
+
+	// Get the rank by counting addresses with higher balance
+	rankQuery := `
+		WITH balances AS (
+			SELECT
+				address,
+				SUM(amount) as balance
+			FROM (
+				SELECT to_address as address, value as amount
+				FROM transfers
+				WHERE token_address = $1
+
+				UNION ALL
+
+				SELECT from_address as address, -value as amount
+				FROM transfers
+				WHERE token_address = $1
+			) t
+			GROUP BY address
+			HAVING SUM(amount) > 0
+		)
+		SELECT COUNT(*) + 1 as rank
+		FROM balances
+		WHERE balance > (
+			SELECT COALESCE(SUM(
+				CASE
+					WHEN to_address = $2 THEN value
+					WHEN from_address = $2 THEN -value
+					ELSE 0
+				END
+			), 0)
+			FROM transfers
+			WHERE token_address = $1
+			AND (to_address = $2 OR from_address = $2)
+		)
+	`
+
+	var rank int
+	if err := r.db.GetContext(ctx, &rank, rankQuery, tokenAddress, holderAddress); err != nil {
+		return nil, fmt.Errorf("failed to get holder rank: %w", err)
+	}
+
+	return &repositories.HolderBalance{
+		Address: holderAddress,
+		Balance: balance,
+		Rank:    rank,
+	}, nil
+}

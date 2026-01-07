@@ -21,6 +21,13 @@ type TokenStatsResult struct {
 	LastTransferAt  *time.Time
 }
 
+// HolderBalance represents an address and its token balance
+type HolderBalance struct {
+	Address string
+	Balance string // big number as string to preserve precision
+	Rank    int
+}
+
 // TransferRepository defines the interface for transfer data operations
 type TransferRepository interface {
 	// GetByFilter retrieves transfers matching the given filter
@@ -37,4 +44,10 @@ type TransferRepository interface {
 
 	// GetTokenStats returns aggregated transfer statistics for a token
 	GetTokenStats(ctx context.Context, tokenAddress string) (*TokenStatsResult, error)
+
+	// GetTopHolders returns top token holders sorted by balance
+	GetTopHolders(ctx context.Context, tokenAddress string, limit int) ([]HolderBalance, error)
+
+	// GetHolderBalance returns balance for a specific holder
+	GetHolderBalance(ctx context.Context, tokenAddress, holderAddress string) (*HolderBalance, error)
 }
