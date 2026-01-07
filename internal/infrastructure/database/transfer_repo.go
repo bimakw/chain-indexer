@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 
@@ -183,4 +184,107 @@ func (r *TransferRepo) GetLatestBlock(ctx context.Context, tokenAddress string) 
 	}
 
 	return blockNumber, nil
+}
+
+// statsRow holds the result of the stats query
+type statsRow struct {
+	TotalTransfers  int64   `db:"total_transfers"`
+	UniqueFrom      int64   `db:"unique_from"`
+	UniqueTo        int64   `db:"unique_to"`
+	TotalVolume     string  `db:"total_volume"`
+	FirstTransfer   *string `db:"first_transfer"`
+	LastTransfer    *string `db:"last_transfer"`
+	Transfers24h    int64   `db:"transfers_24h"`
+	Volume24h       string  `db:"volume_24h"`
+	Transfers7d     int64   `db:"transfers_7d"`
+	Volume7d        string  `db:"volume_7d"`
+}
+
+// GetTokenStats returns aggregated transfer statistics for a token
+func (r *TransferRepo) GetTokenStats(ctx context.Context, tokenAddress string) (*repositories.TokenStatsResult, error) {
+	query := `
+		WITH stats AS (
+			SELECT
+				COUNT(*) as total_transfers,
+				COUNT(DISTINCT from_address) as unique_from,
+				COUNT(DISTINCT to_address) as unique_to,
+				COALESCE(SUM(value), 0)::TEXT as total_volume,
+				MIN(block_timestamp)::TEXT as first_transfer,
+				MAX(block_timestamp)::TEXT as last_transfer
+			FROM transfers
+			WHERE token_address = $1
+		),
+		stats_24h AS (
+			SELECT
+				COUNT(*) as transfers,
+				COALESCE(SUM(value), 0)::TEXT as volume
+			FROM transfers
+			WHERE token_address = $1
+			AND block_timestamp >= NOW() - INTERVAL '24 hours'
+		),
+		stats_7d AS (
+			SELECT
+				COUNT(*) as transfers,
+				COALESCE(SUM(value), 0)::TEXT as volume
+			FROM transfers
+			WHERE token_address = $1
+			AND block_timestamp >= NOW() - INTERVAL '7 days'
+		)
+		SELECT
+			s.total_transfers, s.unique_from, s.unique_to, s.total_volume,
+			s.first_transfer, s.last_transfer,
+			s24.transfers as transfers_24h, s24.volume as volume_24h,
+			s7.transfers as transfers_7d, s7.volume as volume_7d
+		FROM stats s, stats_24h s24, stats_7d s7
+	`
+
+	var row statsRow
+	if err := r.db.GetContext(ctx, &row, query, tokenAddress); err != nil {
+		return nil, fmt.Errorf("failed to get token stats: %w", err)
+	}
+
+	result := &repositories.TokenStatsResult{
+		TotalTransfers:  row.TotalTransfers,
+		UniqueFromAddrs: row.UniqueFrom,
+		UniqueToAddrs:   row.UniqueTo,
+		TotalVolume:     row.TotalVolume,
+		Transfers24h:    row.Transfers24h,
+		Volume24h:       row.Volume24h,
+		Transfers7d:     row.Transfers7d,
+		Volume7d:        row.Volume7d,
+	}
+
+	// Parse timestamps if they exist
+	if row.FirstTransfer != nil && *row.FirstTransfer != "" {
+		t, err := parseTimestamp(*row.FirstTransfer)
+		if err == nil {
+			result.FirstTransferAt = &t
+		}
+	}
+	if row.LastTransfer != nil && *row.LastTransfer != "" {
+		t, err := parseTimestamp(*row.LastTransfer)
+		if err == nil {
+			result.LastTransferAt = &t
+		}
+	}
+
+	return result, nil
+}
+
+// parseTimestamp parses a timestamp string from the database
+func parseTimestamp(s string) (time.Time, error) {
+	// Try parsing various formats
+	formats := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05.999999-07",
+		"2006-01-02 15:04:05.999999",
+		"2006-01-02 15:04:05",
+	}
+	for _, format := range formats {
+		if t, err := time.Parse(format, s); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("failed to parse timestamp: %s", s)
 }

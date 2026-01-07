@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/bimakw/chain-indexer/internal/domain/entities"
+	"github.com/bimakw/chain-indexer/internal/domain/repositories"
 )
 
 // MockTransferRepository is a mock implementation of TransferRepository
@@ -18,6 +19,7 @@ type MockTransferRepository struct {
 	GetCountFunc       func(ctx context.Context, filter entities.TransferFilter) (int64, error)
 	BatchInsertFunc    func(ctx context.Context, transfers []entities.Transfer) error
 	GetLatestBlockFunc func(ctx context.Context, tokenAddress string) (int64, error)
+	GetTokenStatsFunc  func(ctx context.Context, tokenAddress string) (*repositories.TokenStatsResult, error)
 
 	// Call tracking
 	Calls []MockCall
@@ -144,6 +146,42 @@ func (m *MockTransferRepository) GetLatestBlock(ctx context.Context, tokenAddres
 		}
 	}
 	return latest, nil
+}
+
+func (m *MockTransferRepository) GetTokenStats(ctx context.Context, tokenAddress string) (*repositories.TokenStatsResult, error) {
+	m.mu.Lock()
+	m.Calls = append(m.Calls, MockCall{Method: "GetTokenStats", Args: []interface{}{tokenAddress}})
+	m.mu.Unlock()
+
+	if m.GetTokenStatsFunc != nil {
+		return m.GetTokenStatsFunc(ctx, tokenAddress)
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Default mock implementation - count transfers for the token
+	var count int64
+	uniqueFrom := make(map[string]bool)
+	uniqueTo := make(map[string]bool)
+	for _, t := range m.transfers {
+		if t.TokenAddress == tokenAddress {
+			count++
+			uniqueFrom[t.FromAddress] = true
+			uniqueTo[t.ToAddress] = true
+		}
+	}
+
+	return &repositories.TokenStatsResult{
+		TotalTransfers:  count,
+		UniqueFromAddrs: int64(len(uniqueFrom)),
+		UniqueToAddrs:   int64(len(uniqueTo)),
+		TotalVolume:     "0",
+		Transfers24h:    0,
+		Volume24h:       "0",
+		Transfers7d:     0,
+		Volume7d:        "0",
+	}, nil
 }
 
 // AddTransfers adds transfers to the mock store
