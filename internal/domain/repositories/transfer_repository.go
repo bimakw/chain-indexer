@@ -50,4 +50,10 @@ type TransferRepository interface {
 
 	// GetHolderBalance returns balance for a specific holder
 	GetHolderBalance(ctx context.Context, tokenAddress, holderAddress string) (*HolderBalance, error)
+
+	// GetHolderCount returns the count of unique holders with positive balance
+	GetHolderCount(ctx context.Context, tokenAddress string) (int64, error)
+
+	// GetTopHoldersWithOffset returns top token holders with pagination offset
+	GetTopHoldersWithOffset(ctx context.Context, tokenAddress string, limit, offset int) ([]HolderBalance, error)
 }

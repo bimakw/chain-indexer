@@ -42,9 +42,18 @@ type HolderDTO struct {
 	Rank    int    `json:"rank"`
 }
 
+// PaginationMetadata contains pagination information
+type PaginationMetadata struct {
+	Total   int64 `json:"total"`
+	Limit   int   `json:"limit"`
+	Offset  int   `json:"offset"`
+	HasMore bool  `json:"has_more"`
+}
+
 // TopHoldersResponse is the API response for top holders queries
 type TopHoldersResponse struct {
-	Data []HolderDTO `json:"data"`
+	Data       []HolderDTO        `json:"data"`
+	Pagination PaginationMetadata `json:"pagination"`
 }
 
 // HolderBalanceResponse is the API response for holder balance queries
@@ -52,8 +61,8 @@ type HolderBalanceResponse struct {
 	Data HolderDTO `json:"data"`
 }
 
-// GetTopHolders retrieves top token holders sorted by balance
-func (s *HoldersService) GetTopHolders(ctx context.Context, tokenAddress string, limit int) (*TopHoldersResponse, error) {
+// GetTopHolders retrieves top token holders sorted by balance with pagination
+func (s *HoldersService) GetTopHolders(ctx context.Context, tokenAddress string, limit, offset int) (*TopHoldersResponse, error) {
 	tokenAddress = strings.ToLower(tokenAddress)
 
 	// Validate limit
@@ -64,8 +73,13 @@ func (s *HoldersService) GetTopHolders(ctx context.Context, tokenAddress string,
 		limit = 1000
 	}
 
-	// Generate cache key
-	cacheKey := fmt.Sprintf("holders:%s:%d", tokenAddress, limit)
+	// Validate offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Generate cache key with offset
+	cacheKey := fmt.Sprintf("holders:%s:%d:%d", tokenAddress, limit, offset)
 
 	// Try cache first
 	var cached TopHoldersResponse
@@ -85,8 +99,30 @@ func (s *HoldersService) GetTopHolders(ctx context.Context, tokenAddress string,
 		return nil, nil // Token not found
 	}
 
-	// Get top holders from database
-	holders, err := s.transferRepo.GetTopHolders(ctx, tokenAddress, limit)
+	// Get total holder count (with separate cache key)
+	var total int64
+	countCacheKey := fmt.Sprintf("holders_count:%s", tokenAddress)
+	if s.cache != nil {
+		if err := s.cache.Get(ctx, countCacheKey, &total); err != nil {
+			// Cache miss, fetch from database
+			total, err = s.transferRepo.GetHolderCount(ctx, tokenAddress)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get holder count: %w", err)
+			}
+			// Cache the count with 5 min TTL
+			if cacheErr := s.cache.SetWithTTL(ctx, countCacheKey, total, 5*time.Minute); cacheErr != nil {
+				s.logger.Warn("Failed to cache holder count", zap.Error(cacheErr))
+			}
+		}
+	} else {
+		total, err = s.transferRepo.GetHolderCount(ctx, tokenAddress)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get holder count: %w", err)
+		}
+	}
+
+	// Get top holders with offset from database
+	holders, err := s.transferRepo.GetTopHoldersWithOffset(ctx, tokenAddress, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get top holders: %w", err)
 	}
@@ -101,7 +137,18 @@ func (s *HoldersService) GetTopHolders(ctx context.Context, tokenAddress string,
 		}
 	}
 
-	response := &TopHoldersResponse{Data: data}
+	// Calculate has_more
+	hasMore := int64(offset+limit) < total
+
+	response := &TopHoldersResponse{
+		Data: data,
+		Pagination: PaginationMetadata{
+			Total:   total,
+			Limit:   limit,
+			Offset:  offset,
+			HasMore: hasMore,
+		},
+	}
 
 	// Cache the response (5 minutes TTL for holders)
 	if s.cache != nil {

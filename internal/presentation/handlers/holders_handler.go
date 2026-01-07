@@ -49,7 +49,15 @@ func (h *HoldersHandler) GetTopHolders(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response, err := h.service.GetTopHolders(ctx, address, limit)
+	// Parse offset parameter (default 0)
+	offset := 0
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if o, err := strconv.Atoi(v); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	response, err := h.service.GetTopHolders(ctx, address, limit, offset)
 	if err != nil {
 		h.logger.Error("Failed to get top holders", zap.Error(err), zap.String("address", address))
 		h.respondError(w, http.StatusInternalServerError, "Failed to get top holders")
