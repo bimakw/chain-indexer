@@ -12,7 +12,6 @@ import (
 	"github.com/bimakw/chain-indexer/internal/domain/repositories"
 )
 
-// Ensure TokenRepo implements TokenRepository
 var _ repositories.TokenRepository = (*TokenRepo)(nil)
 
 // TokenRepo implements TokenRepository using PostgreSQL
@@ -20,12 +19,10 @@ type TokenRepo struct {
 	db *sqlx.DB
 }
 
-// NewTokenRepo creates a new token repository
 func NewTokenRepo(db *sqlx.DB) *TokenRepo {
 	return &TokenRepo{db: db}
 }
 
-// GetByAddress retrieves a token by its address
 func (r *TokenRepo) GetByAddress(ctx context.Context, address string) (*entities.Token, error) {
 	var token entities.Token
 	query := `SELECT * FROM tokens WHERE address = $1`
@@ -40,7 +37,6 @@ func (r *TokenRepo) GetByAddress(ctx context.Context, address string) (*entities
 	return &token, nil
 }
 
-// GetAll retrieves all tokens
 func (r *TokenRepo) GetAll(ctx context.Context) ([]entities.Token, error) {
 	var tokens []entities.Token
 	query := `SELECT * FROM tokens ORDER BY symbol`
@@ -52,7 +48,6 @@ func (r *TokenRepo) GetAll(ctx context.Context) ([]entities.Token, error) {
 	return tokens, nil
 }
 
-// Upsert creates or updates a token
 func (r *TokenRepo) Upsert(ctx context.Context, token *entities.Token) error {
 	query := `
 		INSERT INTO tokens (address, name, symbol, decimals, first_seen_block)
@@ -78,7 +73,6 @@ func (r *TokenRepo) Upsert(ctx context.Context, token *entities.Token) error {
 	return nil
 }
 
-// UpdateStats updates token statistics
 func (r *TokenRepo) UpdateStats(ctx context.Context, address string, transferCount int64, lastBlock int64) error {
 	query := `
 		UPDATE tokens SET
@@ -109,26 +103,21 @@ var validSortColumns = map[string]bool{
 	"updated_at":              true,
 }
 
-// GetAllPaginated retrieves tokens with pagination and sorting
 func (r *TokenRepo) GetAllPaginated(ctx context.Context, limit, offset int, sortBy, sortOrder string) ([]*entities.Token, int64, error) {
-	// Validate sort column
 	if !validSortColumns[sortBy] {
 		sortBy = "total_indexed_transfers"
 	}
 
-	// Validate sort order
 	if sortOrder != "asc" && sortOrder != "desc" {
 		sortOrder = "desc"
 	}
 
-	// Get total count
 	var total int64
 	countQuery := `SELECT COUNT(*) FROM tokens`
 	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
 		return nil, 0, fmt.Errorf("failed to count tokens: %w", err)
 	}
 
-	// Get paginated tokens
 	query := fmt.Sprintf(`SELECT * FROM tokens ORDER BY %s %s LIMIT $1 OFFSET $2`, sortBy, sortOrder)
 	var tokens []*entities.Token
 	if err := r.db.SelectContext(ctx, &tokens, query, limit, offset); err != nil {
@@ -138,7 +127,6 @@ func (r *TokenRepo) GetAllPaginated(ctx context.Context, limit, offset int, sort
 	return tokens, total, nil
 }
 
-// Count returns the total number of tokens
 func (r *TokenRepo) Count(ctx context.Context) (int64, error) {
 	var count int64
 	query := `SELECT COUNT(*) FROM tokens`

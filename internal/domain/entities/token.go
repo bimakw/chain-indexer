@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-// Token represents an ERC-20 token being indexed
 type Token struct {
 	Address               string    `db:"address"`
 	Name                  string    `db:"name"`

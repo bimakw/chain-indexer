@@ -12,13 +12,11 @@ import (
 	"github.com/bimakw/chain-indexer/internal/application/services"
 )
 
-// HoldersHandler handles HTTP requests for token holders
 type HoldersHandler struct {
 	service *services.HoldersService
 	logger  *zap.Logger
 }
 
-// NewHoldersHandler creates a new holders handler
 func NewHoldersHandler(service *services.HoldersService, logger *zap.Logger) *HoldersHandler {
 	return &HoldersHandler{
 		service: service,
@@ -26,7 +24,6 @@ func NewHoldersHandler(service *services.HoldersService, logger *zap.Logger) *Ho
 	}
 }
 
-// GetTopHolders handles GET /api/v1/tokens/{address}/holders
 func (h *HoldersHandler) GetTopHolders(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	address := chi.URLParam(r, "address")

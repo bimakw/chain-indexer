@@ -14,13 +14,11 @@ import (
 	"github.com/bimakw/chain-indexer/internal/domain/entities"
 )
 
-// TransferHandler handles HTTP requests for transfers
 type TransferHandler struct {
 	service *services.TransferService
 	logger  *zap.Logger
 }
 
-// NewTransferHandler creates a new transfer handler
 func NewTransferHandler(service *services.TransferService, logger *zap.Logger) *TransferHandler {
 	return &TransferHandler{
 		service: service,
@@ -28,20 +26,17 @@ func NewTransferHandler(service *services.TransferService, logger *zap.Logger) *
 	}
 }
 
-// RegisterRoutes registers the transfer routes
 func (h *TransferHandler) RegisterRoutes(r chi.Router) {
 	r.Get("/transfers", h.GetTransfers)
 	r.Get("/transfers/address/{address}", h.GetTransfersByAddress)
 	r.Get("/tokens/{tokenAddress}/transfers", h.GetTransfersByToken)
 }
 
-// GetTransfers handles GET /transfers
 func (h *TransferHandler) GetTransfers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	filter := entities.DefaultTransferFilter()
 
-	// Parse query parameters
 	if v := r.URL.Query().Get("token"); v != "" {
 		addr := strings.ToLower(v)
 		filter.TokenAddress = &addr
@@ -133,7 +128,6 @@ func (h *TransferHandler) GetTransfersByAddress(w http.ResponseWriter, r *http.R
 	h.respondJSON(w, http.StatusOK, response)
 }
 
-// GetTransfersByToken handles GET /tokens/{tokenAddress}/transfers
 func (h *TransferHandler) GetTransfersByToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	tokenAddress := chi.URLParam(r, "tokenAddress")

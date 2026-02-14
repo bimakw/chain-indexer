@@ -7,7 +7,6 @@ import (
 	"github.com/bimakw/chain-indexer/internal/domain/entities"
 )
 
-// Common test addresses
 const (
 	USDTAddress  = "0xdac17f958d2ee523a2206206994597c13d831ec7"
 	USDCAddress  = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
@@ -16,7 +15,6 @@ const (
 	CharlieAddr  = "0x3333333333333333333333333333333333333333"
 )
 
-// CreateTestTransfer creates a test transfer with default values
 func CreateTestTransfer(opts ...TransferOption) entities.Transfer {
 	t := entities.Transfer{
 		ID:             1,
@@ -96,7 +94,6 @@ func WithValue(val *big.Int) TransferOption {
 	}
 }
 
-// CreateTestToken creates a test token with default values
 func CreateTestToken(opts ...TokenOption) *entities.Token {
 	firstSeenBlock := int64(12000000)
 	lastSeenBlock := int64(12345678)
@@ -163,7 +160,6 @@ func TokenWithLastSeenBlock(block int64) TokenOption {
 	}
 }
 
-// CreateTestIndexerState creates a test indexer state
 func CreateTestIndexerState(opts ...IndexerStateOption) *entities.IndexerState {
 	s := &entities.IndexerState{
 		TokenAddress:     USDTAddress,
@@ -201,7 +197,6 @@ func StateWithBackfilling(isBackfilling bool, fromBlock, toBlock *int64) Indexer
 	}
 }
 
-// CreateMultipleTransfers creates multiple test transfers for testing pagination
 func CreateMultipleTransfers(count int, opts ...TransferOption) []entities.Transfer {
 	transfers := make([]entities.Transfer, count)
 	for i := 0; i < count; i++ {
@@ -217,7 +212,6 @@ func CreateMultipleTransfers(count int, opts ...TransferOption) []entities.Trans
 }
 
 func generateTxHash(index int) string {
-	// Generate a unique tx hash based on index
 	hash := "0x"
 	for i := 0; i < 64; i++ {
 		hash += string(rune('a' + (index+i)%6))
@@ -225,7 +219,6 @@ func generateTxHash(index int) string {
 	return hash
 }
 
-// PointerTo returns a pointer to the given value
 func PointerTo[T any](v T) *T {
 	return &v
 }

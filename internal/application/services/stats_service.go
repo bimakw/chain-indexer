@@ -12,7 +12,6 @@ import (
 	"github.com/bimakw/chain-indexer/internal/infrastructure/cache"
 )
 
-// StatsService provides business logic for transfer statistics
 type StatsService struct {
 	transferRepo repositories.TransferRepository
 	tokenRepo    repositories.TokenRepository
@@ -20,7 +19,6 @@ type StatsService struct {
 	logger       *zap.Logger
 }
 
-// NewStatsService creates a new stats service
 func NewStatsService(
 	transferRepo repositories.TransferRepository,
 	tokenRepo repositories.TokenRepository,
@@ -35,7 +33,6 @@ func NewStatsService(
 	}
 }
 
-// TokenStats is the API representation of token transfer statistics
 type TokenStats struct {
 	TokenAddress        string `json:"token_address"`
 	TotalTransfers      int64  `json:"total_transfers"`
@@ -50,30 +47,24 @@ type TokenStats struct {
 	LastTransferAt      string `json:"last_transfer_at"`
 }
 
-// HolderCountResponse is the API response for holder count queries
 type HolderCountResponse struct {
 	Data HolderCountDTO `json:"data"`
 }
 
-// HolderCountDTO represents the holder count data
 type HolderCountDTO struct {
 	TokenAddress string `json:"token_address"`
 	HolderCount  int64  `json:"holder_count"`
 }
 
-// TokenStatsResponse is the API response for token stats queries
 type TokenStatsResponse struct {
 	Data TokenStats `json:"data"`
 }
 
-// GetTokenStats retrieves transfer statistics for a token
 func (s *StatsService) GetTokenStats(ctx context.Context, tokenAddress string) (*TokenStatsResponse, error) {
 	tokenAddress = strings.ToLower(tokenAddress)
 
-	// Generate cache key
 	cacheKey := fmt.Sprintf("stats:%s", tokenAddress)
 
-	// Try cache first
 	var cached TokenStatsResponse
 	if s.cache != nil {
 		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
@@ -82,7 +73,6 @@ func (s *StatsService) GetTokenStats(ctx context.Context, tokenAddress string) (
 		}
 	}
 
-	// Check if token exists
 	token, err := s.tokenRepo.GetByAddress(ctx, tokenAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check token: %w", err)
@@ -91,13 +81,11 @@ func (s *StatsService) GetTokenStats(ctx context.Context, tokenAddress string) (
 		return nil, nil // Token not found
 	}
 
-	// Get stats from database
 	stats, err := s.transferRepo.GetTokenStats(ctx, tokenAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token stats: %w", err)
 	}
 
-	// Build response
 	response := &TokenStatsResponse{
 		Data: TokenStats{
 			TokenAddress:        tokenAddress,
@@ -114,7 +102,6 @@ func (s *StatsService) GetTokenStats(ctx context.Context, tokenAddress string) (
 		},
 	}
 
-	// Format timestamps
 	if stats.FirstTransferAt != nil {
 		response.Data.FirstTransferAt = stats.FirstTransferAt.Format("2006-01-02T15:04:05Z")
 	}
@@ -132,14 +119,11 @@ func (s *StatsService) GetTokenStats(ctx context.Context, tokenAddress string) (
 	return response, nil
 }
 
-// GetHolderCount retrieves the total number of unique holders for a token
 func (s *StatsService) GetHolderCount(ctx context.Context, tokenAddress string) (*HolderCountResponse, error) {
 	tokenAddress = strings.ToLower(tokenAddress)
 
-	// Generate cache key
 	cacheKey := fmt.Sprintf("holder_count:%s", tokenAddress)
 
-	// Try cache first
 	var cached HolderCountResponse
 	if s.cache != nil {
 		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
@@ -148,7 +132,6 @@ func (s *StatsService) GetHolderCount(ctx context.Context, tokenAddress string) 
 		}
 	}
 
-	// Check if token exists
 	token, err := s.tokenRepo.GetByAddress(ctx, tokenAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check token: %w", err)
@@ -157,13 +140,11 @@ func (s *StatsService) GetHolderCount(ctx context.Context, tokenAddress string) 
 		return nil, nil // Token not found
 	}
 
-	// Get holder count from database
 	count, err := s.transferRepo.GetHolderCount(ctx, tokenAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get holder count: %w", err)
 	}
 
-	// Build response
 	response := &HolderCountResponse{
 		Data: HolderCountDTO{
 			TokenAddress: tokenAddress,

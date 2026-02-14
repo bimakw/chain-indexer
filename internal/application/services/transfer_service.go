@@ -14,7 +14,6 @@ import (
 	"github.com/bimakw/chain-indexer/internal/infrastructure/cache"
 )
 
-// TransferService provides business logic for transfer queries
 type TransferService struct {
 	transferRepo repositories.TransferRepository
 	tokenRepo    repositories.TokenRepository
@@ -22,7 +21,6 @@ type TransferService struct {
 	logger       *zap.Logger
 }
 
-// NewTransferService creates a new transfer service
 func NewTransferService(
 	transferRepo repositories.TransferRepository,
 	tokenRepo repositories.TokenRepository,
@@ -37,7 +35,6 @@ func NewTransferService(
 	}
 }
 
-// TransferResponse is the API response for transfer queries
 type TransferResponse struct {
 	Transfers []TransferDTO `json:"transfers"`
 	Total     int64         `json:"total"`
@@ -46,7 +43,6 @@ type TransferResponse struct {
 	HasMore   bool          `json:"has_more"`
 }
 
-// TransferDTO is the API representation of a transfer
 type TransferDTO struct {
 	TxHash         string `json:"tx_hash"`
 	LogIndex       int    `json:"log_index"`
@@ -58,12 +54,9 @@ type TransferDTO struct {
 	Value          string `json:"value"`
 }
 
-// GetTransfers retrieves transfers based on filter
 func (s *TransferService) GetTransfers(ctx context.Context, filter entities.TransferFilter) (*TransferResponse, error) {
-	// Generate cache key
 	cacheKey := s.generateCacheKey(filter)
 
-	// Try cache first
 	var cached TransferResponse
 	if s.cache != nil {
 		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
@@ -72,7 +65,6 @@ func (s *TransferService) GetTransfers(ctx context.Context, filter entities.Tran
 		}
 	}
 
-	// Query database
 	transfers, err := s.transferRepo.GetByFilter(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transfers: %w", err)
@@ -83,7 +75,6 @@ func (s *TransferService) GetTransfers(ctx context.Context, filter entities.Tran
 		return nil, fmt.Errorf("failed to get transfer count: %w", err)
 	}
 
-	// Convert to DTOs
 	dtos := make([]TransferDTO, len(transfers))
 	for i, t := range transfers {
 		dtos[i] = TransferDTO{
@@ -106,7 +97,6 @@ func (s *TransferService) GetTransfers(ctx context.Context, filter entities.Tran
 		HasMore:   int64(filter.Offset+len(transfers)) < total,
 	}
 
-	// Cache the response
 	if s.cache != nil {
 		if err := s.cache.Set(ctx, cacheKey, response); err != nil {
 			s.logger.Warn("Failed to cache response", zap.Error(err))
@@ -116,7 +106,6 @@ func (s *TransferService) GetTransfers(ctx context.Context, filter entities.Tran
 	return response, nil
 }
 
-// GetTransfersByAddress retrieves transfers involving a specific address
 func (s *TransferService) GetTransfersByAddress(ctx context.Context, address string, limit, offset int) (*TransferResponse, error) {
 	address = strings.ToLower(address)
 	filter := entities.TransferFilter{
@@ -127,7 +116,6 @@ func (s *TransferService) GetTransfersByAddress(ctx context.Context, address str
 	return s.GetTransfers(ctx, filter)
 }
 
-// GetTransfersByToken retrieves transfers for a specific token
 func (s *TransferService) GetTransfersByToken(ctx context.Context, tokenAddress string, limit, offset int) (*TransferResponse, error) {
 	tokenAddress = strings.ToLower(tokenAddress)
 	filter := entities.TransferFilter{

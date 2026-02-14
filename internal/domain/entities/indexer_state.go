@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-// IndexerState tracks the indexing progress for a token
 type IndexerState struct {
 	TokenAddress      string    `db:"token_address"`
 	LastIndexedBlock  int64     `db:"last_indexed_block"`

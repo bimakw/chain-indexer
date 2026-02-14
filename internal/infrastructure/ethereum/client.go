@@ -15,7 +15,6 @@ import (
 	"github.com/bimakw/chain-indexer/internal/config"
 )
 
-// Client wraps the Ethereum client with retry logic and utilities
 type Client struct {
 	client  *ethclient.Client
 	config  config.EthereumConfig
@@ -23,7 +22,6 @@ type Client struct {
 	chainID *big.Int
 }
 
-// NewClient creates a new Ethereum client
 func NewClient(cfg config.EthereumConfig, logger *zap.Logger) (*Client, error) {
 	client, err := ethclient.Dial(cfg.RPCURL)
 	if err != nil {
@@ -55,12 +53,10 @@ func NewClient(cfg config.EthereumConfig, logger *zap.Logger) (*Client, error) {
 	}, nil
 }
 
-// Close closes the Ethereum client connection
 func (c *Client) Close() {
 	c.client.Close()
 }
 
-// GetLatestBlockNumber returns the latest block number
 func (c *Client) GetLatestBlockNumber(ctx context.Context) (uint64, error) {
 	var blockNumber uint64
 	var err error
@@ -84,7 +80,6 @@ func (c *Client) GetLatestBlockNumber(ctx context.Context) (uint64, error) {
 	return 0, fmt.Errorf("failed to get latest block number after %d retries: %w", c.config.MaxRetries, err)
 }
 
-// GetBlockByNumber returns a block by its number
 func (c *Client) GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (*types.Block, error) {
 	var block *types.Block
 	var err error
@@ -109,7 +104,6 @@ func (c *Client) GetBlockByNumber(ctx context.Context, blockNumber *big.Int) (*t
 	return nil, fmt.Errorf("failed to get block %s after %d retries: %w", blockNumber.String(), c.config.MaxRetries, err)
 }
 
-// GetLogs retrieves logs matching the filter query
 func (c *Client) GetLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
 	var logs []types.Log
 	var err error
@@ -133,7 +127,6 @@ func (c *Client) GetLogs(ctx context.Context, query ethereum.FilterQuery) ([]typ
 	return nil, fmt.Errorf("failed to get logs after %d retries: %w", c.config.MaxRetries, err)
 }
 
-// GetBlockTimestamp returns the timestamp of a block
 func (c *Client) GetBlockTimestamp(ctx context.Context, blockNumber uint64) (time.Time, error) {
 	block, err := c.GetBlockByNumber(ctx, big.NewInt(int64(blockNumber)))
 	if err != nil {
@@ -142,7 +135,6 @@ func (c *Client) GetBlockTimestamp(ctx context.Context, blockNumber uint64) (tim
 	return time.Unix(int64(block.Time()), 0), nil
 }
 
-// BuildFilterQuery builds a filter query for ERC-20 Transfer events
 func (c *Client) BuildFilterQuery(fromBlock, toBlock *big.Int, addresses []common.Address) ethereum.FilterQuery {
 	// ERC-20 Transfer event signature: Transfer(address,address,uint256)
 	// keccak256("Transfer(address,address,uint256)") = 0xddf252ad...
@@ -163,12 +155,10 @@ func (c *Client) ChainID() *big.Int {
 	return c.chainID
 }
 
-// EthClient returns the underlying ethclient for advanced operations
 func (c *Client) EthClient() *ethclient.Client {
 	return c.client
 }
 
-// CallContract executes a contract call (eth_call) without creating a transaction
 func (c *Client) CallContract(ctx context.Context, contractAddr common.Address, data []byte) ([]byte, error) {
 	var result []byte
 	var err error

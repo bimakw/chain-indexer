@@ -23,14 +23,12 @@ import (
 )
 
 func main() {
-	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Setup logger
 	logger := setupLogger(cfg.Log.Level)
 	defer logger.Sync()
 
@@ -38,7 +36,6 @@ func main() {
 		zap.Int("port", cfg.API.Port),
 	)
 
-	// Connect to database
 	db, err := database.NewPostgresDB(cfg.Database, logger)
 	if err != nil {
 		logger.Fatal("Failed to connect to database", zap.Error(err))
@@ -55,19 +52,16 @@ func main() {
 		defer redisCache.Close()
 	}
 
-	// Create repositories
 	tokenRepo := database.NewTokenRepo(db.DB())
 	transferRepo := database.NewTransferRepo(db.DB())
 	portfolioRepo := database.NewPortfolioRepo(db.DB())
 
-	// Create services
 	transferService := services.NewTransferService(transferRepo, tokenRepo, redisCache, logger)
 	tokenService := services.NewTokenService(tokenRepo, redisCache, logger)
 	statsService := services.NewStatsService(transferRepo, tokenRepo, redisCache, logger)
 	holdersService := services.NewHoldersService(transferRepo, tokenRepo, redisCache, logger)
 	portfolioService := services.NewPortfolioService(portfolioRepo, redisCache, logger)
 
-	// Create handlers
 	transferHandler := handlers.NewTransferHandler(transferService, logger)
 	tokenHandler := handlers.NewTokenHandler(tokenService, logger)
 	statsHandler := handlers.NewStatsHandler(statsService, logger)
@@ -80,10 +74,8 @@ func main() {
 	}
 	healthHandler := handlers.NewHealthHandler(db, cacheChecker)
 
-	// Setup router
 	r := chi.NewRouter()
 
-	// Middleware stack
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.RealIP)
 	r.Use(middleware.Logger(logger))
@@ -108,7 +100,6 @@ func main() {
 		r.Get("/tokens/{address}/holders/{holder_address}", holdersHandler.GetHolderBalance)
 	})
 
-	// Start server
 	addr := fmt.Sprintf("%s:%d", cfg.API.Host, cfg.API.Port)
 	server := &http.Server{
 		Addr:         addr,
@@ -117,7 +108,6 @@ func main() {
 		WriteTimeout: cfg.API.WriteTimeout,
 	}
 
-	// Run server in goroutine
 	go func() {
 		logger.Info("API server starting", zap.String("addr", addr))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -125,14 +115,12 @@ func main() {
 		}
 	}()
 
-	// Wait for shutdown signal
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
 
 	logger.Info("Received shutdown signal, shutting down server...")
 
-	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.API.ShutdownTimeout)
 	defer cancel()
 

@@ -1,4 +1,3 @@
-/*
  * Copyright (c) 2024 Bima Kharisma Wicaksana
  * GitHub: https://github.com/bimakw
  *

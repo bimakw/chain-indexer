@@ -16,7 +16,6 @@ import (
 	"github.com/bimakw/chain-indexer/internal/infrastructure/ethereum"
 )
 
-// IndexerService orchestrates the indexing process
 type IndexerService struct {
 	fetcher         *ethereum.Fetcher
 	ethClient       *ethereum.Client
@@ -31,7 +30,6 @@ type IndexerService struct {
 	wg              sync.WaitGroup
 }
 
-// IndexerMetrics tracks indexer performance
 type IndexerMetrics struct {
 	mu                sync.RWMutex
 	BlocksIndexed     int64
@@ -42,7 +40,6 @@ type IndexerMetrics struct {
 	ErrorCount        int64
 }
 
-// NewIndexerService creates a new indexer service
 func NewIndexerService(
 	fetcher *ethereum.Fetcher,
 	ethClient *ethereum.Client,
@@ -67,32 +64,27 @@ func NewIndexerService(
 	}
 }
 
-// Start begins the indexing process
 func (s *IndexerService) Start(ctx context.Context) error {
 	s.logger.Info("Starting indexer service",
 		zap.Strings("tokens", s.config.TokenAddresses),
 	)
 
-	// Initialize tokens in database
 	if err := s.initializeTokens(ctx); err != nil {
 		return fmt.Errorf("failed to initialize tokens: %w", err)
 	}
 
-	// Start the main indexing loop
 	s.wg.Add(1)
 	go s.runIndexingLoop(ctx)
 
 	return nil
 }
 
-// Stop gracefully stops the indexer
 func (s *IndexerService) Stop() {
 	s.logger.Info("Stopping indexer service")
 	close(s.stopCh)
 	s.wg.Wait()
 }
 
-// GetMetrics returns current indexer metrics
 func (s *IndexerService) GetMetrics() IndexerMetrics {
 	s.metrics.mu.RLock()
 	defer s.metrics.mu.RUnlock()
@@ -136,7 +128,6 @@ func (s *IndexerService) initializeTokens(ctx context.Context) error {
 					)
 				}
 			} else {
-				// No metadata fetcher available, use defaults
 				name = "Unknown"
 				symbol = "UNK"
 				decimals = 18
@@ -153,7 +144,6 @@ func (s *IndexerService) initializeTokens(ctx context.Context) error {
 				return fmt.Errorf("failed to create token %s: %w", addr, err)
 			}
 
-			// Initialize indexer state
 			state := &entities.IndexerState{
 				TokenAddress:     addr,
 				LastIndexedBlock: 0,
@@ -176,7 +166,6 @@ func (s *IndexerService) runIndexingLoop(ctx context.Context) {
 	ticker := time.NewTicker(s.config.PollInterval)
 	defer ticker.Stop()
 
-	// Run immediately on start
 	s.indexNewBlocks(ctx)
 
 	for {
@@ -203,7 +192,6 @@ func (s *IndexerService) indexNewBlocks(ctx context.Context) {
 		return
 	}
 
-	// Process each token
 	g, gCtx := errgroup.WithContext(ctx)
 	g.SetLimit(s.config.WorkerCount)
 
@@ -227,7 +215,6 @@ func (s *IndexerService) indexNewBlocks(ctx context.Context) {
 
 // indexTokenTransfers indexes transfers for a single token
 func (s *IndexerService) indexTokenTransfers(ctx context.Context, tokenAddress string, toBlock int64) error {
-	// Get current state
 	state, err := s.stateRepo.Get(ctx, tokenAddress)
 	if err != nil {
 		return fmt.Errorf("failed to get indexer state: %w", err)
@@ -239,11 +226,9 @@ func (s *IndexerService) indexTokenTransfers(ctx context.Context, tokenAddress s
 
 	fromBlock := state.LastIndexedBlock + 1
 	if fromBlock > toBlock {
-		// Already up to date
 		return nil
 	}
 
-	// Split into batches
 	ranges := ethereum.SplitBlockRange(fromBlock, toBlock, s.config.BatchSize)
 
 	for _, r := range ranges {
@@ -263,13 +248,11 @@ func (s *IndexerService) indexTokenTransfers(ctx context.Context, tokenAddress s
 				return fmt.Errorf("failed to insert transfers: %w", err)
 			}
 
-			// Update token stats
 			if err := s.tokenRepo.UpdateStats(ctx, tokenAddress, int64(len(result.Transfers)), r.To); err != nil {
 				s.logger.Warn("Failed to update token stats", zap.Error(err))
 			}
 		}
 
-		// Update checkpoint
 		if err := s.stateRepo.UpdateLastBlock(ctx, tokenAddress, r.To); err != nil {
 			return fmt.Errorf("failed to update checkpoint: %w", err)
 		}
@@ -287,7 +270,6 @@ func (s *IndexerService) indexTokenTransfers(ctx context.Context, tokenAddress s
 	return nil
 }
 
-// Backfill indexes historical blocks for a token
 func (s *IndexerService) Backfill(ctx context.Context, tokenAddress string, fromBlock, toBlock int64) error {
 	tokenAddress = strings.ToLower(tokenAddress)
 
@@ -297,7 +279,6 @@ func (s *IndexerService) Backfill(ctx context.Context, tokenAddress string, from
 		zap.Int64("to_block", toBlock),
 	)
 
-	// Mark as backfilling
 	if err := s.stateRepo.SetBackfilling(ctx, tokenAddress, true, &fromBlock, &toBlock); err != nil {
 		return fmt.Errorf("failed to set backfilling state: %w", err)
 	}

@@ -15,14 +15,12 @@ import (
 	"github.com/bimakw/chain-indexer/internal/domain/entities"
 )
 
-// Fetcher handles fetching and parsing blockchain data
 type Fetcher struct {
 	client *Client
 	config config.IndexerConfig
 	logger *zap.Logger
 }
 
-// NewFetcher creates a new blockchain data fetcher
 func NewFetcher(client *Client, cfg config.IndexerConfig, logger *zap.Logger) *Fetcher {
 	return &Fetcher{
 		client: client,
@@ -31,7 +29,6 @@ func NewFetcher(client *Client, cfg config.IndexerConfig, logger *zap.Logger) *F
 	}
 }
 
-// FetchResult contains the result of fetching transfers
 type FetchResult struct {
 	Transfers      []entities.Transfer
 	FromBlock      int64
@@ -39,15 +36,12 @@ type FetchResult struct {
 	FailedLogCount int
 }
 
-// FetchTransfers fetches Transfer events for a range of blocks
 func (f *Fetcher) FetchTransfers(ctx context.Context, tokenAddresses []string, fromBlock, toBlock int64) (*FetchResult, error) {
-	// Convert addresses to common.Address
 	addresses := make([]common.Address, len(tokenAddresses))
 	for i, addr := range tokenAddresses {
 		addresses[i] = common.HexToAddress(addr)
 	}
 
-	// Build and execute filter query
 	query := f.client.BuildFilterQuery(
 		big.NewInt(fromBlock),
 		big.NewInt(toBlock),
@@ -73,7 +67,6 @@ func (f *Fetcher) FetchTransfers(ctx context.Context, tokenAddresses []string, f
 		}, nil
 	}
 
-	// Collect unique block numbers and fetch timestamps concurrently
 	blockNumbers := make(map[uint64]struct{})
 	for _, log := range logs {
 		blockNumbers[log.BlockNumber] = struct{}{}
@@ -84,7 +77,6 @@ func (f *Fetcher) FetchTransfers(ctx context.Context, tokenAddresses []string, f
 		return nil, fmt.Errorf("failed to fetch block timestamps: %w", err)
 	}
 
-	// Parse logs into transfers
 	transfers, failedIndices := ParseTransferLogs(logs, blockTimestamps)
 
 	if len(failedIndices) > 0 {
@@ -139,7 +131,6 @@ func (f *Fetcher) fetchBlockTimestamps(ctx context.Context, blockNumbers map[uin
 	return timestamps, nil
 }
 
-// GetSafeBlockNumber returns the latest block number minus confirmations
 func (f *Fetcher) GetSafeBlockNumber(ctx context.Context) (int64, error) {
 	latestBlock, err := f.client.GetLatestBlockNumber(ctx)
 	if err != nil {
@@ -154,13 +145,11 @@ func (f *Fetcher) GetSafeBlockNumber(ctx context.Context) (int64, error) {
 	return safeBlock, nil
 }
 
-// BlockRange represents a range of blocks to fetch
 type BlockRange struct {
 	From int64
 	To   int64
 }
 
-// SplitBlockRange splits a range into batches
 func SplitBlockRange(fromBlock, toBlock int64, batchSize int) []BlockRange {
 	if fromBlock > toBlock {
 		return nil

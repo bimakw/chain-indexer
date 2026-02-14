@@ -12,14 +12,12 @@ import (
 	"github.com/bimakw/chain-indexer/internal/infrastructure/cache"
 )
 
-// TokenService provides business logic for token queries
 type TokenService struct {
 	tokenRepo repositories.TokenRepository
 	cache     *cache.RedisCache
 	logger    *zap.Logger
 }
 
-// NewTokenService creates a new token service
 func NewTokenService(
 	tokenRepo repositories.TokenRepository,
 	cache *cache.RedisCache,
@@ -32,7 +30,6 @@ func NewTokenService(
 	}
 }
 
-// TokenDTO is the API representation of a token
 type TokenDTO struct {
 	Address               string `json:"address"`
 	Name                  string `json:"name"`
@@ -45,30 +42,24 @@ type TokenDTO struct {
 	UpdatedAt             string `json:"updated_at"`
 }
 
-// TokenListResponse is the API response for token list queries
 type TokenListResponse struct {
 	Data       []TokenDTO         `json:"data"`
 	Pagination PaginationResponse `json:"pagination"`
 }
 
-// TokenResponse is the API response for single token queries
 type TokenResponse struct {
 	Data TokenDTO `json:"data"`
 }
 
-// PaginationResponse contains pagination metadata
 type PaginationResponse struct {
 	Total  int64 `json:"total"`
 	Limit  int   `json:"limit"`
 	Offset int   `json:"offset"`
 }
 
-// GetAllTokens retrieves all tokens with pagination and sorting
 func (s *TokenService) GetAllTokens(ctx context.Context, limit, offset int, sortBy, sortOrder string) (*TokenListResponse, error) {
-	// Generate cache key
 	cacheKey := fmt.Sprintf("tokens:list:%d:%d:%s:%s", limit, offset, sortBy, sortOrder)
 
-	// Try cache first
 	var cached TokenListResponse
 	if s.cache != nil {
 		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
@@ -77,13 +68,11 @@ func (s *TokenService) GetAllTokens(ctx context.Context, limit, offset int, sort
 		}
 	}
 
-	// Query database
 	tokens, total, err := s.tokenRepo.GetAllPaginated(ctx, limit, offset, sortBy, sortOrder)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tokens: %w", err)
 	}
 
-	// Convert to DTOs
 	dtos := make([]TokenDTO, len(tokens))
 	for i, t := range tokens {
 		dtos[i] = tokenToDTO(t)
@@ -98,7 +87,6 @@ func (s *TokenService) GetAllTokens(ctx context.Context, limit, offset int, sort
 		},
 	}
 
-	// Cache the response
 	if s.cache != nil {
 		if err := s.cache.Set(ctx, cacheKey, response); err != nil {
 			s.logger.Warn("Failed to cache response", zap.Error(err))
@@ -108,14 +96,11 @@ func (s *TokenService) GetAllTokens(ctx context.Context, limit, offset int, sort
 	return response, nil
 }
 
-// GetByAddress retrieves a single token by address
 func (s *TokenService) GetByAddress(ctx context.Context, address string) (*TokenResponse, error) {
 	address = strings.ToLower(address)
 
-	// Generate cache key
 	cacheKey := fmt.Sprintf("tokens:%s", address)
 
-	// Try cache first
 	var cached TokenResponse
 	if s.cache != nil {
 		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
@@ -124,7 +109,6 @@ func (s *TokenService) GetByAddress(ctx context.Context, address string) (*Token
 		}
 	}
 
-	// Query database
 	token, err := s.tokenRepo.GetByAddress(ctx, address)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token: %w", err)
@@ -137,7 +121,6 @@ func (s *TokenService) GetByAddress(ctx context.Context, address string) (*Token
 		Data: tokenToDTO(token),
 	}
 
-	// Cache the response
 	if s.cache != nil {
 		if err := s.cache.Set(ctx, cacheKey, response); err != nil {
 			s.logger.Warn("Failed to cache response", zap.Error(err))

@@ -12,13 +12,11 @@ import (
 	"github.com/bimakw/chain-indexer/internal/application/services"
 )
 
-// TokenHandler handles HTTP requests for tokens
 type TokenHandler struct {
 	service *services.TokenService
 	logger  *zap.Logger
 }
 
-// NewTokenHandler creates a new token handler
 func NewTokenHandler(service *services.TokenService, logger *zap.Logger) *TokenHandler {
 	return &TokenHandler{
 		service: service,
@@ -26,17 +24,14 @@ func NewTokenHandler(service *services.TokenService, logger *zap.Logger) *TokenH
 	}
 }
 
-// RegisterRoutes registers the token routes
 func (h *TokenHandler) RegisterRoutes(r chi.Router) {
 	r.Get("/tokens", h.GetAllTokens)
 	r.Get("/tokens/{address}", h.GetByAddress)
 }
 
-// GetAllTokens handles GET /api/v1/tokens
 func (h *TokenHandler) GetAllTokens(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Parse query parameters with defaults
 	limit := 100
 	offset := 0
 	sortBy := "total_indexed_transfers"

@@ -7,18 +7,15 @@ import (
 	"time"
 )
 
-// HealthChecker defines the interface for health checking components
 type HealthChecker interface {
 	HealthCheck(ctx context.Context) error
 }
 
-// HealthHandler handles health check requests
 type HealthHandler struct {
 	db    HealthChecker
 	cache HealthChecker
 }
 
-// NewHealthHandler creates a new health handler
 func NewHealthHandler(db, cache HealthChecker) *HealthHandler {
 	return &HealthHandler{
 		db:    db,
@@ -26,14 +23,12 @@ func NewHealthHandler(db, cache HealthChecker) *HealthHandler {
 	}
 }
 
-// HealthResponse represents the health check response
 type HealthResponse struct {
 	Status    string            `json:"status"`
 	Timestamp string            `json:"timestamp"`
 	Services  map[string]string `json:"services"`
 }
 
-// Health handles GET /health
 func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
@@ -44,7 +39,6 @@ func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 		Services:  make(map[string]string),
 	}
 
-	// Check database
 	if err := h.db.HealthCheck(ctx); err != nil {
 		response.Status = "unhealthy"
 		response.Services["database"] = "unhealthy: " + err.Error()
@@ -52,7 +46,6 @@ func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 		response.Services["database"] = "healthy"
 	}
 
-	// Check cache
 	if h.cache != nil {
 		if err := h.cache.HealthCheck(ctx); err != nil {
 			response.Status = "degraded"

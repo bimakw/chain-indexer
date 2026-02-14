@@ -12,7 +12,6 @@ import (
 	"github.com/bimakw/chain-indexer/internal/domain/repositories"
 )
 
-// Ensure TransferRepo implements TransferRepository
 var _ repositories.TransferRepository = (*TransferRepo)(nil)
 
 // TransferRepo implements TransferRepository using PostgreSQL
@@ -20,12 +19,10 @@ type TransferRepo struct {
 	db *sqlx.DB
 }
 
-// NewTransferRepo creates a new transfer repository
 func NewTransferRepo(db *sqlx.DB) *TransferRepo {
 	return &TransferRepo{db: db}
 }
 
-// GetByFilter retrieves transfers matching the given filter
 func (r *TransferRepo) GetByFilter(ctx context.Context, filter entities.TransferFilter) ([]entities.Transfer, error) {
 	query, args := r.buildFilterQuery(filter, false)
 
@@ -37,7 +34,6 @@ func (r *TransferRepo) GetByFilter(ctx context.Context, filter entities.Transfer
 	return transfers, nil
 }
 
-// GetCount returns the count of transfers matching the filter
 func (r *TransferRepo) GetCount(ctx context.Context, filter entities.TransferFilter) (int64, error) {
 	query, args := r.buildFilterQuery(filter, true)
 
@@ -126,7 +122,6 @@ func (r *TransferRepo) buildFilterQuery(filter entities.TransferFilter, countOnl
 	return query, args
 }
 
-// BatchInsert inserts multiple transfers in a single transaction
 func (r *TransferRepo) BatchInsert(ctx context.Context, transfers []entities.Transfer) error {
 	if len(transfers) == 0 {
 		return nil
@@ -174,7 +169,6 @@ func (r *TransferRepo) BatchInsert(ctx context.Context, transfers []entities.Tra
 	return nil
 }
 
-// GetLatestBlock returns the latest indexed block for a token
 func (r *TransferRepo) GetLatestBlock(ctx context.Context, tokenAddress string) (int64, error) {
 	query := `SELECT COALESCE(MAX(block_number), 0) FROM transfers WHERE token_address = $1`
 
@@ -200,7 +194,6 @@ type statsRow struct {
 	Volume7d       string  `db:"volume_7d"`
 }
 
-// GetTokenStats returns aggregated transfer statistics for a token
 func (r *TransferRepo) GetTokenStats(ctx context.Context, tokenAddress string) (*repositories.TokenStatsResult, error) {
 	query := `
 		WITH stats AS (
@@ -254,7 +247,6 @@ func (r *TransferRepo) GetTokenStats(ctx context.Context, tokenAddress string) (
 		Volume7d:        row.Volume7d,
 	}
 
-	// Parse timestamps if they exist
 	if row.FirstTransfer != nil && *row.FirstTransfer != "" {
 		t, err := parseTimestamp(*row.FirstTransfer)
 		if err == nil {
@@ -273,7 +265,6 @@ func (r *TransferRepo) GetTokenStats(ctx context.Context, tokenAddress string) (
 
 // parseTimestamp parses a timestamp string from the database
 func parseTimestamp(s string) (time.Time, error) {
-	// Try parsing various formats
 	formats := []string{
 		time.RFC3339Nano,
 		time.RFC3339,
@@ -296,7 +287,6 @@ type holderBalanceRow struct {
 	Rank    int    `db:"rank"`
 }
 
-// GetTopHolders returns top token holders sorted by balance
 func (r *TransferRepo) GetTopHolders(ctx context.Context, tokenAddress string, limit int) ([]repositories.HolderBalance, error) {
 	query := `
 		WITH balances AS (
@@ -345,9 +335,7 @@ func (r *TransferRepo) GetTopHolders(ctx context.Context, tokenAddress string, l
 	return result, nil
 }
 
-// GetHolderBalance returns balance for a specific holder
 func (r *TransferRepo) GetHolderBalance(ctx context.Context, tokenAddress, holderAddress string) (*repositories.HolderBalance, error) {
-	// First get the balance
 	balanceQuery := `
 		SELECT
 			COALESCE(SUM(
@@ -367,7 +355,6 @@ func (r *TransferRepo) GetHolderBalance(ctx context.Context, tokenAddress, holde
 		return nil, fmt.Errorf("failed to get holder balance: %w", err)
 	}
 
-	// Get the rank by counting addresses with higher balance
 	rankQuery := `
 		WITH balances AS (
 			SELECT
@@ -415,7 +402,6 @@ func (r *TransferRepo) GetHolderBalance(ctx context.Context, tokenAddress, holde
 	}, nil
 }
 
-// GetHolderCount returns the count of unique holders with positive balance
 func (r *TransferRepo) GetHolderCount(ctx context.Context, tokenAddress string) (int64, error) {
 	query := `
 		WITH balances AS (
@@ -441,7 +427,6 @@ func (r *TransferRepo) GetHolderCount(ctx context.Context, tokenAddress string) 
 	return count, nil
 }
 
-// GetTopHoldersWithOffset returns top token holders with pagination offset
 func (r *TransferRepo) GetTopHoldersWithOffset(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error) {
 	query := `
 		WITH balances AS (

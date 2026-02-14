@@ -13,14 +13,12 @@ import (
 	"github.com/bimakw/chain-indexer/internal/config"
 )
 
-// RedisCache provides caching functionality using Redis
 type RedisCache struct {
 	client *redis.Client
 	logger *zap.Logger
 	ttl    time.Duration
 }
 
-// NewRedisCache creates a new Redis cache instance
 func NewRedisCache(cfg config.RedisConfig, ttl time.Duration, logger *zap.Logger) (*RedisCache, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
@@ -47,12 +45,10 @@ func NewRedisCache(cfg config.RedisConfig, ttl time.Duration, logger *zap.Logger
 	}, nil
 }
 
-// Close closes the Redis connection
 func (c *RedisCache) Close() error {
 	return c.client.Close()
 }
 
-// Get retrieves a value from cache
 func (c *RedisCache) Get(ctx context.Context, key string, dest interface{}) error {
 	val, err := c.client.Get(ctx, key).Result()
 	if err != nil {
@@ -69,7 +65,6 @@ func (c *RedisCache) Get(ctx context.Context, key string, dest interface{}) erro
 	return nil
 }
 
-// Set stores a value in cache
 func (c *RedisCache) Set(ctx context.Context, key string, value interface{}) error {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -97,7 +92,6 @@ func (c *RedisCache) SetWithTTL(ctx context.Context, key string, value interface
 	return nil
 }
 
-// Delete removes a value from cache
 func (c *RedisCache) Delete(ctx context.Context, key string) error {
 	if err := c.client.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("failed to delete from cache: %w", err)
@@ -105,7 +99,6 @@ func (c *RedisCache) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-// DeletePattern removes all keys matching a pattern
 func (c *RedisCache) DeletePattern(ctx context.Context, pattern string) error {
 	iter := c.client.Scan(ctx, 0, pattern, 0).Iterator()
 	for iter.Next(ctx) {
@@ -119,15 +112,12 @@ func (c *RedisCache) DeletePattern(ctx context.Context, pattern string) error {
 	return iter.Err()
 }
 
-// HealthCheck checks if Redis is reachable
 func (c *RedisCache) HealthCheck(ctx context.Context) error {
 	return c.client.Ping(ctx).Err()
 }
 
-// Client returns the underlying Redis client
 func (c *RedisCache) Client() *redis.Client {
 	return c.client
 }
 
-// ErrCacheMiss indicates the key was not found in cache
 var ErrCacheMiss = fmt.Errorf("cache miss")

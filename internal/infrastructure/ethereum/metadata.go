@@ -1,4 +1,3 @@
-/*
  * Copyright (c) 2024 Bima Kharisma Wicaksana
  * GitHub: https://github.com/bimakw
  *
@@ -20,20 +19,17 @@ import (
 	"go.uber.org/zap"
 )
 
-// TokenMetadata holds ERC-20 token metadata
 type TokenMetadata struct {
 	Name     string
 	Symbol   string
 	Decimals uint8
 }
 
-// MetadataFetcher fetches ERC-20 token metadata via eth_call
 type MetadataFetcher struct {
 	client *Client
 	logger *zap.Logger
 }
 
-// NewMetadataFetcher creates a new metadata fetcher
 func NewMetadataFetcher(client *Client, logger *zap.Logger) *MetadataFetcher {
 	return &MetadataFetcher{
 		client: client,
@@ -51,7 +47,6 @@ var (
 	decimalsSig = common.FromHex("0x313ce567")
 )
 
-// FetchMetadata fetches token metadata for a given contract address
 func (f *MetadataFetcher) FetchMetadata(ctx context.Context, tokenAddress string) (*TokenMetadata, error) {
 	addr := common.HexToAddress(tokenAddress)
 
@@ -118,7 +113,6 @@ func (f *MetadataFetcher) fetchDecimals(ctx context.Context, addr common.Address
 		return 0, fmt.Errorf("empty result for decimals")
 	}
 
-	// Decimals returns uint8, but padded to 32 bytes
 	if len(result) < 32 {
 		return 0, fmt.Errorf("invalid decimals response length: %d", len(result))
 	}
@@ -135,17 +129,14 @@ func decodeStringOrBytes32(data []byte) (string, error) {
 		return "", fmt.Errorf("empty data")
 	}
 
-	// If data is less than 32 bytes, invalid
 	if len(data) < 32 {
 		return "", fmt.Errorf("data too short: %d bytes", len(data))
 	}
 
-	// Try to decode as ABI-encoded string first
 	// Check if first 32 bytes could be an offset (typically 0x20 = 32)
 	if len(data) >= 64 {
 		offset := new(big.Int).SetBytes(data[:32])
 		if offset.Uint64() == 32 {
-			// This looks like an ABI-encoded string
 			length := new(big.Int).SetBytes(data[32:64])
 			strLen := int(length.Uint64())
 
@@ -162,7 +153,6 @@ func decodeStringOrBytes32(data []byte) (string, error) {
 	}
 
 	// Fallback: treat as bytes32
-	// Remove trailing null bytes
 	result := bytes.TrimRight(data[:32], "\x00")
 
 	// Check if result is printable ASCII
@@ -170,7 +160,6 @@ func decodeStringOrBytes32(data []byte) (string, error) {
 		return string(result), nil
 	}
 
-	// Return hex representation if not printable
 	return "0x" + hex.EncodeToString(data[:32]), nil
 }
 
@@ -184,7 +173,6 @@ func isPrintableASCII(data []byte) bool {
 	return len(data) > 0
 }
 
-// FetchMetadataBatch fetches metadata for multiple tokens
 func (f *MetadataFetcher) FetchMetadataBatch(ctx context.Context, tokenAddresses []string) (map[string]*TokenMetadata, error) {
 	results := make(map[string]*TokenMetadata)
 
@@ -196,7 +184,6 @@ func (f *MetadataFetcher) FetchMetadataBatch(ctx context.Context, tokenAddresses
 				zap.String("token", addr),
 				zap.Error(err),
 			)
-			// Use fallback values
 			metadata = &TokenMetadata{
 				Name:     "Unknown",
 				Symbol:   "UNK",

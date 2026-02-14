@@ -12,14 +12,12 @@ import (
 	"github.com/bimakw/chain-indexer/internal/infrastructure/cache"
 )
 
-// PortfolioService provides business logic for wallet portfolios
 type PortfolioService struct {
 	portfolioRepo repositories.PortfolioRepository
 	cache         *cache.RedisCache
 	logger        *zap.Logger
 }
 
-// NewPortfolioService creates a new portfolio service
 func NewPortfolioService(
 	portfolioRepo repositories.PortfolioRepository,
 	cache *cache.RedisCache,
@@ -32,7 +30,6 @@ func NewPortfolioService(
 	}
 }
 
-// TokenHoldingDTO is the API representation of a token holding
 type TokenHoldingDTO struct {
 	TokenAddress     string `json:"token_address"`
 	TokenName        string `json:"token_name"`
@@ -42,14 +39,12 @@ type TokenHoldingDTO struct {
 	BalanceFormatted string `json:"balance_formatted"` // Human readable
 }
 
-// PortfolioSummary contains summary information for a portfolio
 type PortfolioSummary struct {
 	TotalTokens       int   `json:"total_tokens"`
 	TotalTransfersIn  int64 `json:"total_transfers_in"`
 	TotalTransfersOut int64 `json:"total_transfers_out"`
 }
 
-// PortfolioDTO is the API representation of a wallet portfolio
 type PortfolioDTO struct {
 	WalletAddress string            `json:"wallet_address"`
 	Holdings      []TokenHoldingDTO `json:"holdings"`
@@ -57,17 +52,14 @@ type PortfolioDTO struct {
 	UpdatedAt     string            `json:"updated_at"`
 }
 
-// PortfolioResponse wraps portfolio data for API response
 type PortfolioResponse struct {
 	Data PortfolioDTO `json:"data"`
 }
 
-// TokenHoldingResponse wraps single token holding for API response
 type TokenHoldingResponse struct {
 	Data TokenHoldingDTO `json:"data"`
 }
 
-// WalletSummaryDTO is the API representation of wallet summary
 type WalletSummaryDTO struct {
 	WalletAddress     string  `json:"wallet_address"`
 	TotalTransfersIn  int64   `json:"total_transfers_in"`
@@ -79,19 +71,15 @@ type WalletSummaryDTO struct {
 	LastTransferAt    *string `json:"last_transfer_at,omitempty"`
 }
 
-// WalletSummaryResponse wraps wallet summary for API response
 type WalletSummaryResponse struct {
 	Data WalletSummaryDTO `json:"data"`
 }
 
-// GetPortfolio retrieves complete portfolio for a wallet address
 func (s *PortfolioService) GetPortfolio(ctx context.Context, walletAddress string) (*PortfolioResponse, error) {
 	walletAddress = strings.ToLower(walletAddress)
 
-	// Generate cache key
 	cacheKey := fmt.Sprintf("portfolio:%s", walletAddress)
 
-	// Try cache first
 	var cached PortfolioResponse
 	if s.cache != nil {
 		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
@@ -100,19 +88,16 @@ func (s *PortfolioService) GetPortfolio(ctx context.Context, walletAddress strin
 		}
 	}
 
-	// Get holdings from database
 	holdings, err := s.portfolioRepo.GetWalletHoldings(ctx, walletAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wallet holdings: %w", err)
 	}
 
-	// Get transfer summary for the wallet
 	summary, err := s.portfolioRepo.GetWalletTransferSummary(ctx, walletAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wallet summary: %w", err)
 	}
 
-	// Build response
 	holdingsDTO := make([]TokenHoldingDTO, len(holdings))
 	for i, h := range holdings {
 		holdingsDTO[i] = TokenHoldingDTO{
@@ -148,15 +133,12 @@ func (s *PortfolioService) GetPortfolio(ctx context.Context, walletAddress strin
 	return response, nil
 }
 
-// GetPortfolioByToken retrieves holding for specific token in a wallet
 func (s *PortfolioService) GetPortfolioByToken(ctx context.Context, walletAddress, tokenAddress string) (*TokenHoldingResponse, error) {
 	walletAddress = strings.ToLower(walletAddress)
 	tokenAddress = strings.ToLower(tokenAddress)
 
-	// Generate cache key
 	cacheKey := fmt.Sprintf("portfolio:%s:%s", walletAddress, tokenAddress)
 
-	// Try cache first
 	var cached TokenHoldingResponse
 	if s.cache != nil {
 		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
@@ -165,7 +147,6 @@ func (s *PortfolioService) GetPortfolioByToken(ctx context.Context, walletAddres
 		}
 	}
 
-	// Get holding from database
 	holding, err := s.portfolioRepo.GetWalletHoldingByToken(ctx, walletAddress, tokenAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wallet holding by token: %w", err)
@@ -196,14 +177,11 @@ func (s *PortfolioService) GetPortfolioByToken(ctx context.Context, walletAddres
 	return response, nil
 }
 
-// GetWalletSummary retrieves transfer summary for a wallet
 func (s *PortfolioService) GetWalletSummary(ctx context.Context, walletAddress string) (*WalletSummaryResponse, error) {
 	walletAddress = strings.ToLower(walletAddress)
 
-	// Generate cache key
 	cacheKey := fmt.Sprintf("wallet_summary:%s", walletAddress)
 
-	// Try cache first
 	var cached WalletSummaryResponse
 	if s.cache != nil {
 		if err := s.cache.Get(ctx, cacheKey, &cached); err == nil {
@@ -212,13 +190,11 @@ func (s *PortfolioService) GetWalletSummary(ctx context.Context, walletAddress s
 		}
 	}
 
-	// Get summary from database
 	summary, err := s.portfolioRepo.GetWalletTransferSummary(ctx, walletAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wallet summary: %w", err)
 	}
 
-	// Format timestamps
 	var firstTransferAt, lastTransferAt *string
 	if summary.FirstTransferAt != nil {
 		t := summary.FirstTransferAt.Format(time.RFC3339)

@@ -11,13 +11,11 @@ import (
 	"github.com/bimakw/chain-indexer/internal/application/services"
 )
 
-// StatsHandler handles HTTP requests for transfer statistics
 type StatsHandler struct {
 	service *services.StatsService
 	logger  *zap.Logger
 }
 
-// NewStatsHandler creates a new stats handler
 func NewStatsHandler(service *services.StatsService, logger *zap.Logger) *StatsHandler {
 	return &StatsHandler{
 		service: service,
@@ -25,7 +23,6 @@ func NewStatsHandler(service *services.StatsService, logger *zap.Logger) *StatsH
 	}
 }
 
-// GetTokenStats handles GET /api/v1/tokens/{address}/stats
 func (h *StatsHandler) GetTokenStats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	address := chi.URLParam(r, "address")
@@ -52,7 +49,6 @@ func (h *StatsHandler) GetTokenStats(w http.ResponseWriter, r *http.Request) {
 	h.respondJSON(w, http.StatusOK, response)
 }
 
-// GetHolderCount handles GET /api/v1/tokens/{address}/holder-count
 func (h *StatsHandler) GetHolderCount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	address := chi.URLParam(r, "address")

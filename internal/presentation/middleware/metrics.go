@@ -35,7 +35,6 @@ var (
 	)
 )
 
-// Metrics returns a middleware that collects Prometheus metrics
 func Metrics() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +48,6 @@ func Metrics() func(http.Handler) http.Handler {
 			duration := time.Since(start).Seconds()
 			status := strconv.Itoa(wrapped.status)
 
-			// Normalize path to avoid high cardinality
 			path := normalizePath(r.URL.Path)
 
 			httpRequestsTotal.WithLabelValues(r.Method, path, status).Inc()
@@ -60,12 +58,10 @@ func Metrics() func(http.Handler) http.Handler {
 
 // normalizePath normalizes the path to reduce cardinality
 func normalizePath(path string) string {
-	// For now, return the path as-is
 	// In production, you might want to replace UUIDs, IDs, etc.
 	return path
 }
 
-// IndexerMetrics holds Prometheus metrics for the indexer
 type IndexerMetrics struct {
 	BlocksIndexed    prometheus.Counter
 	TransfersIndexed prometheus.Counter
@@ -74,7 +70,6 @@ type IndexerMetrics struct {
 	ErrorsTotal      prometheus.Counter
 }
 
-// NewIndexerMetrics creates new indexer metrics
 func NewIndexerMetrics() *IndexerMetrics {
 	return &IndexerMetrics{
 		BlocksIndexed: promauto.NewCounter(prometheus.CounterOpts{

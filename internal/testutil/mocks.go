@@ -9,12 +9,10 @@ import (
 	"github.com/bimakw/chain-indexer/internal/domain/repositories"
 )
 
-// MockTransferRepository is a mock implementation of TransferRepository
 type MockTransferRepository struct {
 	mu        sync.RWMutex
 	transfers []entities.Transfer
 
-	// Function hooks for custom behavior
 	GetByFilterFunc             func(ctx context.Context, filter entities.TransferFilter) ([]entities.Transfer, error)
 	GetCountFunc                func(ctx context.Context, filter entities.TransferFilter) (int64, error)
 	BatchInsertFunc             func(ctx context.Context, transfers []entities.Transfer) error
@@ -25,7 +23,6 @@ type MockTransferRepository struct {
 	GetHolderCountFunc          func(ctx context.Context, tokenAddress string) (int64, error)
 	GetTopHoldersWithOffsetFunc func(ctx context.Context, tokenAddress string, limit, offset int) ([]repositories.HolderBalance, error)
 
-	// Call tracking
 	Calls []MockCall
 }
 
@@ -53,7 +50,6 @@ func (m *MockTransferRepository) GetByFilter(ctx context.Context, filter entitie
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Simple filtering implementation
 	result := make([]entities.Transfer, 0)
 	for _, t := range m.transfers {
 		if filter.TokenAddress != nil && t.TokenAddress != *filter.TokenAddress {
@@ -77,7 +73,6 @@ func (m *MockTransferRepository) GetByFilter(ctx context.Context, filter entitie
 		result = append(result, t)
 	}
 
-	// Apply pagination
 	start := filter.Offset
 	if start > len(result) {
 		return []entities.Transfer{}, nil
@@ -164,7 +159,6 @@ func (m *MockTransferRepository) GetTokenStats(ctx context.Context, tokenAddress
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Default mock implementation - count transfers for the token
 	var count int64
 	uniqueFrom := make(map[string]bool)
 	uniqueTo := make(map[string]bool)
@@ -200,7 +194,6 @@ func (m *MockTransferRepository) GetTopHolders(ctx context.Context, tokenAddress
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Calculate balances from transfers
 	balances := make(map[string]int64)
 	for _, t := range m.transfers {
 		if t.TokenAddress == tokenAddress {
@@ -209,7 +202,6 @@ func (m *MockTransferRepository) GetTopHolders(ctx context.Context, tokenAddress
 		}
 	}
 
-	// Build result
 	var result []repositories.HolderBalance
 	rank := 1
 	for addr, bal := range balances {
@@ -257,7 +249,6 @@ func (m *MockTransferRepository) GetHolderCount(ctx context.Context, tokenAddres
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Count unique addresses with positive balance from transfers
 	balances := make(map[string]int64)
 	for _, t := range m.transfers {
 		if t.TokenAddress == tokenAddress {
@@ -287,7 +278,6 @@ func (m *MockTransferRepository) GetTopHoldersWithOffset(ctx context.Context, to
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Calculate balances from transfers
 	balances := make(map[string]int64)
 	for _, t := range m.transfers {
 		if t.TokenAddress == tokenAddress {
@@ -296,7 +286,6 @@ func (m *MockTransferRepository) GetTopHoldersWithOffset(ctx context.Context, to
 		}
 	}
 
-	// Build result
 	var result []repositories.HolderBalance
 	rank := offset + 1
 	skipped := 0
@@ -321,14 +310,12 @@ func (m *MockTransferRepository) GetTopHoldersWithOffset(ctx context.Context, to
 	return result, nil
 }
 
-// AddTransfers adds transfers to the mock store
 func (m *MockTransferRepository) AddTransfers(transfers ...entities.Transfer) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.transfers = append(m.transfers, transfers...)
 }
 
-// Reset clears all stored data and calls
 func (m *MockTransferRepository) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -336,12 +323,10 @@ func (m *MockTransferRepository) Reset() {
 	m.Calls = make([]MockCall, 0)
 }
 
-// MockTokenRepository is a mock implementation of TokenRepository
 type MockTokenRepository struct {
 	mu     sync.RWMutex
 	tokens map[string]*entities.Token
 
-	// Function hooks
 	GetByAddressFunc    func(ctx context.Context, address string) (*entities.Token, error)
 	GetAllFunc          func(ctx context.Context) ([]entities.Token, error)
 	GetAllPaginatedFunc func(ctx context.Context, limit, offset int, sortBy, sortOrder string) ([]*entities.Token, int64, error)
@@ -415,7 +400,6 @@ func (m *MockTokenRepository) GetAllPaginated(ctx context.Context, limit, offset
 
 	total := int64(len(result))
 
-	// Apply pagination
 	start := offset
 	if start > len(result) {
 		return []*entities.Token{}, total, nil
@@ -476,14 +460,12 @@ func (m *MockTokenRepository) UpdateStats(ctx context.Context, address string, t
 	return nil
 }
 
-// AddToken adds a token to the mock store
 func (m *MockTokenRepository) AddToken(token *entities.Token) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.tokens[token.Address] = token
 }
 
-// Reset clears all stored data and calls
 func (m *MockTokenRepository) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -491,12 +473,10 @@ func (m *MockTokenRepository) Reset() {
 	m.Calls = make([]MockCall, 0)
 }
 
-// MockIndexerStateRepository is a mock implementation of IndexerStateRepository
 type MockIndexerStateRepository struct {
 	mu     sync.RWMutex
 	states map[string]*entities.IndexerState
 
-	// Function hooks
 	GetFunc             func(ctx context.Context, tokenAddress string) (*entities.IndexerState, error)
 	UpsertFunc          func(ctx context.Context, state *entities.IndexerState) error
 	UpdateLastBlockFunc func(ctx context.Context, tokenAddress string, blockNumber int64) error
@@ -578,14 +558,12 @@ func (m *MockIndexerStateRepository) SetBackfilling(ctx context.Context, tokenAd
 	return nil
 }
 
-// AddState adds a state to the mock store
 func (m *MockIndexerStateRepository) AddState(state *entities.IndexerState) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.states[state.TokenAddress] = state
 }
 
-// Reset clears all stored data and calls
 func (m *MockIndexerStateRepository) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -593,7 +571,6 @@ func (m *MockIndexerStateRepository) Reset() {
 	m.Calls = make([]MockCall, 0)
 }
 
-// MockHealthChecker is a mock implementation of HealthChecker
 type MockHealthChecker struct {
 	mu sync.RWMutex
 
@@ -633,17 +610,14 @@ func (m *MockHealthChecker) SetHealthy(healthy bool) {
 	}
 }
 
-// MockPortfolioRepository is a mock implementation of PortfolioRepository
 type MockPortfolioRepository struct {
 	mu sync.RWMutex
 
-	// Function hooks for custom behavior
 	GetWalletHoldingsFunc        func(ctx context.Context, walletAddress string) ([]entities.TokenHolding, error)
 	GetWalletHoldingByTokenFunc  func(ctx context.Context, walletAddress, tokenAddress string) (*entities.TokenHolding, error)
 	GetWalletTokenCountFunc      func(ctx context.Context, walletAddress string) (int64, error)
 	GetWalletTransferSummaryFunc func(ctx context.Context, walletAddress string) (*repositories.WalletTransferSummary, error)
 
-	// Call tracking
 	Calls []MockCall
 }
 
@@ -662,7 +636,6 @@ func (m *MockPortfolioRepository) GetWalletHoldings(ctx context.Context, walletA
 		return m.GetWalletHoldingsFunc(ctx, walletAddress)
 	}
 
-	// Default mock implementation
 	return []entities.TokenHolding{
 		{
 			TokenAddress: "0xdac17f958d2ee523a2206206994597c13d831ec7",
@@ -684,7 +657,6 @@ func (m *MockPortfolioRepository) GetWalletHoldingByToken(ctx context.Context, w
 		return m.GetWalletHoldingByTokenFunc(ctx, walletAddress, tokenAddress)
 	}
 
-	// Default mock implementation
 	return &entities.TokenHolding{
 		TokenAddress: tokenAddress,
 		TokenName:    "Mock Token",
@@ -716,7 +688,6 @@ func (m *MockPortfolioRepository) GetWalletTransferSummary(ctx context.Context, 
 		return m.GetWalletTransferSummaryFunc(ctx, walletAddress)
 	}
 
-	// Default mock implementation
 	return &repositories.WalletTransferSummary{
 		TotalTransfersIn:  100,
 		TotalTransfersOut: 50,
@@ -726,7 +697,6 @@ func (m *MockPortfolioRepository) GetWalletTransferSummary(ctx context.Context, 
 	}, nil
 }
 
-// Reset clears all calls
 func (m *MockPortfolioRepository) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

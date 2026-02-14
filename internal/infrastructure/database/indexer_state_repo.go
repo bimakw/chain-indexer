@@ -12,7 +12,6 @@ import (
 	"github.com/bimakw/chain-indexer/internal/domain/repositories"
 )
 
-// Ensure IndexerStateRepo implements IndexerStateRepository
 var _ repositories.IndexerStateRepository = (*IndexerStateRepo)(nil)
 
 // IndexerStateRepo implements IndexerStateRepository using PostgreSQL
@@ -20,12 +19,10 @@ type IndexerStateRepo struct {
 	db *sqlx.DB
 }
 
-// NewIndexerStateRepo creates a new indexer state repository
 func NewIndexerStateRepo(db *sqlx.DB) *IndexerStateRepo {
 	return &IndexerStateRepo{db: db}
 }
 
-// Get retrieves the indexer state for a token
 func (r *IndexerStateRepo) Get(ctx context.Context, tokenAddress string) (*entities.IndexerState, error) {
 	var state entities.IndexerState
 	query := `SELECT * FROM indexer_state WHERE token_address = $1`
@@ -40,7 +37,6 @@ func (r *IndexerStateRepo) Get(ctx context.Context, tokenAddress string) (*entit
 	return &state, nil
 }
 
-// Upsert creates or updates the indexer state
 func (r *IndexerStateRepo) Upsert(ctx context.Context, state *entities.IndexerState) error {
 	query := `
 		INSERT INTO indexer_state (token_address, last_indexed_block, is_backfilling, backfill_from_block, backfill_to_block)
@@ -67,7 +63,6 @@ func (r *IndexerStateRepo) Upsert(ctx context.Context, state *entities.IndexerSt
 	return nil
 }
 
-// UpdateLastBlock updates the last indexed block for a token
 func (r *IndexerStateRepo) UpdateLastBlock(ctx context.Context, tokenAddress string, blockNumber int64) error {
 	query := `
 		UPDATE indexer_state SET
@@ -87,7 +82,6 @@ func (r *IndexerStateRepo) UpdateLastBlock(ctx context.Context, tokenAddress str
 	}
 
 	if rows == 0 {
-		// Insert if not exists
 		return r.Upsert(ctx, &entities.IndexerState{
 			TokenAddress:     tokenAddress,
 			LastIndexedBlock: blockNumber,
@@ -97,7 +91,6 @@ func (r *IndexerStateRepo) UpdateLastBlock(ctx context.Context, tokenAddress str
 	return nil
 }
 
-// SetBackfilling sets the backfilling state for a token
 func (r *IndexerStateRepo) SetBackfilling(ctx context.Context, tokenAddress string, isBackfilling bool, fromBlock, toBlock *int64) error {
 	query := `
 		UPDATE indexer_state SET

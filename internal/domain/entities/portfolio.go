@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// TokenHolding represents a single token holding in a portfolio
 type TokenHolding struct {
 	TokenAddress string   `json:"token_address"`
 	TokenName    string   `json:"token_name"`
@@ -16,7 +15,6 @@ type TokenHolding struct {
 	BalanceHuman string   `json:"balance_formatted"` // Human readable (with decimals)
 }
 
-// WalletPortfolio represents complete portfolio for a wallet
 type WalletPortfolio struct {
 	WalletAddress string         `json:"wallet_address"`
 	Holdings      []TokenHolding `json:"holdings"`
@@ -24,7 +22,6 @@ type WalletPortfolio struct {
 	LastUpdated   time.Time      `json:"last_updated"`
 }
 
-// PortfolioFilter for query portfolio
 type PortfolioFilter struct {
 	WalletAddress string
 	TokenAddress  *string  // Optional: filter specific token

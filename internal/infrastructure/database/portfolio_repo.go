@@ -10,7 +10,6 @@ import (
 	"github.com/bimakw/chain-indexer/internal/domain/repositories"
 )
 
-// Ensure PortfolioRepo implements PortfolioRepository
 var _ repositories.PortfolioRepository = (*PortfolioRepo)(nil)
 
 // PortfolioRepo implements PortfolioRepository using PostgreSQL
@@ -18,7 +17,6 @@ type PortfolioRepo struct {
 	db *sqlx.DB
 }
 
-// NewPortfolioRepo creates a new portfolio repository
 func NewPortfolioRepo(db *sqlx.DB) *PortfolioRepo {
 	return &PortfolioRepo{db: db}
 }
@@ -32,7 +30,6 @@ type holdingRow struct {
 	Balance      string `db:"balance"`
 }
 
-// GetWalletHoldings retrieves all token holdings for a wallet
 func (r *PortfolioRepo) GetWalletHoldings(ctx context.Context, walletAddress string) ([]entities.TokenHolding, error) {
 	query := `
 		WITH balances AS (
@@ -77,7 +74,6 @@ func (r *PortfolioRepo) GetWalletHoldings(ctx context.Context, walletAddress str
 	return holdings, nil
 }
 
-// GetWalletHoldingByToken retrieves holding for specific token
 func (r *PortfolioRepo) GetWalletHoldingByToken(ctx context.Context, walletAddress, tokenAddress string) (*entities.TokenHolding, error) {
 	query := `
 		SELECT
@@ -112,7 +108,6 @@ func (r *PortfolioRepo) GetWalletHoldingByToken(ctx context.Context, walletAddre
 	}, nil
 }
 
-// GetWalletTokenCount returns count of tokens held by wallet
 func (r *PortfolioRepo) GetWalletTokenCount(ctx context.Context, walletAddress string) (int64, error) {
 	query := `
 		WITH balances AS (
@@ -148,7 +143,6 @@ type summaryRow struct {
 	LastTransfer  *string `db:"last_transfer"`
 }
 
-// GetWalletTransferSummary returns transfer stats for a wallet
 func (r *PortfolioRepo) GetWalletTransferSummary(ctx context.Context, walletAddress string) (*repositories.WalletTransferSummary, error) {
 	query := `
 		SELECT
@@ -176,7 +170,6 @@ func (r *PortfolioRepo) GetWalletTransferSummary(ctx context.Context, walletAddr
 		UniqueTokens:      row.UniqueTokens,
 	}
 
-	// Parse timestamps if they exist
 	if row.FirstTransfer != nil && *row.FirstTransfer != "" {
 		t, err := parseTimestamp(*row.FirstTransfer)
 		if err == nil {
@@ -199,18 +192,15 @@ func formatBalance(balance string, decimals int) string {
 		return "0"
 	}
 
-	// Pad with leading zeros if necessary
 	for len(balance) <= decimals {
 		balance = "0" + balance
 	}
 
-	// Insert decimal point
 	if decimals > 0 {
 		insertPos := len(balance) - decimals
 		intPart := balance[:insertPos]
 		decPart := balance[insertPos:]
 
-		// Trim trailing zeros from decimal part
 		decPart = trimTrailingZeros(decPart)
 
 		if decPart == "" {

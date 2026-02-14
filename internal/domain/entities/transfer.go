@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// Transfer represents an ERC-20 Transfer event
 type Transfer struct {
 	ID             int64     `db:"id"`
 	TxHash         string    `db:"tx_hash"`
@@ -20,7 +19,6 @@ type Transfer struct {
 	CreatedAt      time.Time `db:"created_at"`
 }
 
-// TransferFilter contains filters for querying transfers
 type TransferFilter struct {
 	TokenAddress *string
 	FromAddress  *string
@@ -34,7 +32,6 @@ type TransferFilter struct {
 	Offset       int
 }
 
-// DefaultTransferFilter returns a filter with sensible defaults
 func DefaultTransferFilter() TransferFilter {
 	return TransferFilter{
 		Limit:  100,

@@ -20,14 +20,12 @@ import (
 )
 
 func main() {
-	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Setup logger
 	logger := setupLogger(cfg.Log.Level)
 	defer logger.Sync()
 
@@ -36,36 +34,29 @@ func main() {
 		zap.String("rpc_url", cfg.Ethereum.RPCURL),
 	)
 
-	// Setup context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Connect to database
 	db, err := database.NewPostgresDB(cfg.Database, logger)
 	if err != nil {
 		logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	defer db.Close()
 
-	// Connect to Ethereum node
 	ethClient, err := ethereum.NewClient(cfg.Ethereum, logger)
 	if err != nil {
 		logger.Fatal("Failed to connect to Ethereum node", zap.Error(err))
 	}
 	defer ethClient.Close()
 
-	// Create repositories
 	tokenRepo := database.NewTokenRepo(db.DB())
 	transferRepo := database.NewTransferRepo(db.DB())
 	stateRepo := database.NewIndexerStateRepo(db.DB())
 
-	// Create fetcher
 	fetcher := ethereum.NewFetcher(ethClient, cfg.Indexer, logger)
 
-	// Create metadata fetcher
 	metadataFetcher := ethereum.NewMetadataFetcher(ethClient, logger)
 
-	// Create indexer service
 	indexerService := services.NewIndexerService(
 		fetcher,
 		ethClient,
@@ -77,22 +68,18 @@ func main() {
 		logger,
 	)
 
-	// Start indexer
 	if err := indexerService.Start(ctx); err != nil {
 		logger.Fatal("Failed to start indexer", zap.Error(err))
 	}
 
-	// Start metrics server
 	go startMetricsServer(cfg.Indexer.MetricsPort, logger)
 
-	// Wait for shutdown signal
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
 
 	logger.Info("Received shutdown signal, stopping indexer...")
 
-	// Graceful shutdown
 	indexerService.Stop()
 
 	logger.Info("Indexer stopped")

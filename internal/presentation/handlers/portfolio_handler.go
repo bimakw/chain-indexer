@@ -11,13 +11,11 @@ import (
 	"github.com/bimakw/chain-indexer/internal/application/services"
 )
 
-// PortfolioHandler handles HTTP requests for wallet portfolio endpoints
 type PortfolioHandler struct {
 	service *services.PortfolioService
 	logger  *zap.Logger
 }
 
-// NewPortfolioHandler creates a new portfolio handler
 func NewPortfolioHandler(service *services.PortfolioService, logger *zap.Logger) *PortfolioHandler {
 	return &PortfolioHandler{
 		service: service,
@@ -25,7 +23,6 @@ func NewPortfolioHandler(service *services.PortfolioService, logger *zap.Logger)
 	}
 }
 
-// RegisterRoutes registers the portfolio routes on a chi router
 func (h *PortfolioHandler) RegisterRoutes(r chi.Router) {
 	r.Route("/wallets", func(r chi.Router) {
 		r.Get("/{address}/portfolio", h.GetPortfolio)
@@ -34,7 +31,6 @@ func (h *PortfolioHandler) RegisterRoutes(r chi.Router) {
 	})
 }
 
-// GetPortfolio handles GET /api/v1/wallets/{address}/portfolio
 func (h *PortfolioHandler) GetPortfolio(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	address := chi.URLParam(r, "address")
@@ -97,7 +93,6 @@ func (h *PortfolioHandler) GetTokenHolding(w http.ResponseWriter, r *http.Reques
 	h.respondJSON(w, http.StatusOK, response)
 }
 
-// GetWalletSummary handles GET /api/v1/wallets/{address}/summary
 func (h *PortfolioHandler) GetWalletSummary(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	address := chi.URLParam(r, "address")
